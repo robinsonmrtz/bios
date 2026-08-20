@@ -1,50 +1,63 @@
-import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import { supabase } from './supabase';
+
+export interface Cuenta {
+  id?: string;
+  nombre: string;
+  saldo_inicial: number;
+  tipo: string;
+  color?: string;
+  logo?: string;
+  incluir_dashboard?: boolean;
+}
 
 /**
- * Base de datos local de Bios.
- * Todo vive en el navegador/dispositivo del usuario — nunca sale a internet.
- *
- * Cada módulo nuevo que se cree (Finanzas, Salud, etc.) agrega su propio
- * "object store" aquí mismo, respetando este único archivo como fuente
- * de verdad del esquema de datos.
+ * Obtener todas las cuentas desde Supabase
  */
+export async function getCuentas(): Promise<Cuenta[]> {
+  const { data, error } = await supabase
+    .from('cuentas')
+    .select('*')
+    .order('created_at', { ascending: false });
 
-interface BiosDBSchema extends DBSchema {
-  settings: {
-    key: string;
-    value: unknown;
-  };
-}
-
-const DB_NAME = 'bios-db';
-const DB_VERSION = 1;
-
-let dbPromise: Promise<IDBPDatabase<BiosDBSchema>> | null = null;
-
-export function getDB() {
-  if (!dbPromise) {
-    dbPromise = openDB<BiosDBSchema>(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains('settings')) {
-          db.createObjectStore('settings');
-        }
-      },
-    });
+  if (error) {
+    console.error('Error al obtener cuentas:', error.message);
+    return [];
   }
-  return dbPromise;
+
+  return data || [];
 }
 
-export async function dbGet<T>(key: string): Promise<T | undefined> {
-  const db = await getDB();
-  return db.get('settings', key) as Promise<T | undefined>;
+/**
+ * Guardar/Crear una nueva cuenta en Supabase
+ */
+export async function crearCuenta(cuenta: Omit<Cuenta, 'id'>): Promise<Cuenta | null> {
+  const { data, error } = await supabase
+    .from('cuentas')
+    .insert([cuenta])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error al crear cuenta:', error.message);
+    throw new Error(error.message);
+  }
+
+  return data;
 }
 
-export async function dbSet<T>(key: string, value: T): Promise<void> {
-  const db = await getDB();
-  await db.put('settings', value, key);
-}
+/**
+ * Eliminar una cuenta de Supabase
+ */
+export async function eliminarCuenta(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('cuentas')
+    .delete()
+    .eq('id', id);
 
-export async function dbDelete(key: string): Promise<void> {
-  const db = await getDB();
-  await db.delete('settings', key);
+  if (error) {
+    console.error('Error al eliminar cuenta:', error.message);
+    return false;
+  }
+
+  return true;
 }
