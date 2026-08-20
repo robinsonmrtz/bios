@@ -16,7 +16,9 @@ import {
   IconBuildingStore,
   IconCalendar,
   IconStar,
-  IconTrash, // <-- Importado de Tabler
+  IconTrash,
+  IconChevronLeft,
+  IconChevronRight,
 } from '@tabler/icons-react';
 
 // Re-exportamos con los mismos nombres que usa la app
@@ -38,5 +40,7 @@ export {
   IconBuildingStore,
   IconCalendar,
   IconStar,
-  IconTrash, // <-- Re-exportado para toda la app
+  IconTrash,
+  IconChevronLeft,
+  IconChevronRight,
 };
