@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FinanzasNav } from './FinanzasNav';
 import { CuentasView } from './CuentasView';
+import { CategoriasView } from './CategoriasView';
 
 export function FinanzasModule() {
   const [tab, setTab] = useState('cuentas'); // Puse 'cuentas' por defecto para que lo veas de una
@@ -14,6 +15,8 @@ export function FinanzasModule() {
         {/* Enrutador interno del módulo */}
         {tab === 'cuentas' ? (
           <CuentasView />
+           ) : tab === 'categorias' ? (
+           <CategoriasView />
         ) : (
           <div className="py-10 text-center font-mono text-[11px]" style={{ color: 'var(--bios-text-faint)' }}>
             — contenido de "{tab}" en construcción —

@@ -3,22 +3,7 @@ import CuentaWidget, { type CuentaData } from './widgets/CuentaWidget';
 import { Modal } from '../../shared/components/Modal';
 import { IconPlus, IconTrash } from '../../shared/icons';
 import { ColorPicker, ImageLogoInput, ToggleCard } from '../../shared/components/FormControls';
-import { getCuentas, crearCuenta, type Cuenta } from '../../core/db/db';
-
-// Convierte la fila de Supabase a lo que espera el widget visual.
-// OJO: todavía no existe el módulo de transacciones, así que por ahora
-// saldoActual y saldoPrevisto son iguales al saldo inicial. Cuando se
-// conecten las transacciones, esto se reemplaza por el cálculo real.
-function filaACuentaData(fila: Cuenta): CuentaData {
-  return {
-    id: fila.id!,
-    nombre: fila.nombre,
-    saldoActual: fila.saldo_inicial,
-    saldoPrevisto: fila.saldo_inicial,
-    color: fila.color || '#3498db',
-    logo: fila.logo || undefined,
-  };
-}
+import { getCuentas, crearCuenta, getTransacciones, calcularSaldoCuenta } from '../../core/db/db';
 
 export function CuentasView() {
   const [cuentas, setCuentas] = useState<CuentaData[]>([]);
@@ -36,8 +21,27 @@ export function CuentasView() {
   async function cargarCuentas() {
     setCargando(true);
     try {
-      const filas = await getCuentas();
-      setCuentas(filas.map(filaACuentaData));
+      // Traemos cuentas Y transacciones juntas: el saldo de cada cuenta
+      // depende de sumar/restar todas las transacciones que la tocan.
+      const [filas, transacciones] = await Promise.all([getCuentas(), getTransacciones()]);
+
+      setCuentas(
+        filas.map((fila) => {
+          const saldo = calcularSaldoCuenta(fila.id!, fila.saldo_inicial, transacciones);
+          return {
+            id: fila.id!,
+            nombre: fila.nombre,
+            // TODO: cuando exista navegación de mes (pantalla Transacciones/Resumen),
+            // saldoPrevisto pasa a incluir también las transacciones PENDIENTES
+            // hasta el fin del mes navegado, igual que hacía el piloto. Por ahora
+            // son iguales porque no hay mes que navegar todavía.
+            saldoActual: saldo,
+            saldoPrevisto: saldo,
+            color: fila.color || '#3498db',
+            logo: fila.logo || undefined,
+          };
+        })
+      );
     } catch (err) {
       console.error('Error cargando cuentas:', err);
       alert('No se pudieron cargar las cuentas. Revisa la consola.');
@@ -55,16 +59,16 @@ export function CuentasView() {
 
     setGuardando(true);
     try {
-      const fila = await crearCuenta({
+      await crearCuenta({
         nombre: nuevoNombre.trim(),
         saldo_inicial: parseFloat(nuevoSaldo) || 0,
         color: nuevoColor,
         logo: nuevoLogo || undefined,
         incluir_dashboard: incluirDashboard,
       });
-      if (fila) {
-        setCuentas((prev) => [...prev, filaACuentaData(fila)]);
-      }
+      // Recargamos todo (cuentas + transacciones) en vez de solo empujar la
+      // nueva al estado — así el saldo se calcula igual para todas.
+      await cargarCuentas();
       limpiarYCerrar();
     } catch (err) {
       console.error('Error guardando cuenta:', err);
