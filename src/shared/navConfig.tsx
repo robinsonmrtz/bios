@@ -1,4 +1,4 @@
-import { IconHome, IconBank } from './icons';
+import { IconHome, IconBank, IconBriefcase } from './icons';
 
 export interface NavItem {
   id: string;
@@ -13,4 +13,5 @@ export interface NavItem {
 export const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: IconHome },
   { id: 'finanzas', label: 'Finanzas', icon: IconBank },
+  { id: 'trabajo', label: 'Trabajo', icon: IconBriefcase },
 ];

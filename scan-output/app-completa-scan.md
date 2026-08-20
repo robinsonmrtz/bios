@@ -1,6 +1,6 @@
 # Escaneo: app-completa
 
-_Generado: 2026-08-20T02:25:47.435Z_
+_Generado: 2026-08-20T15:05:38.438Z_
 
 ## ⚠️ Posibles duplicados detectados
 
@@ -43,10 +43,7 @@ _Generado: 2026-08-20T02:25:47.435Z_
 ## Árbol de archivos incluidos
 
 - package.json
-- src\core\auth\AuthGate.tsx
-- src\core\auth\Login.tsx
 - src\core\auth\LoginGate.tsx
-- src\core\auth\SetupPassword.tsx
 - src\core\auth\authService.ts
 - src\core\db\db.ts
 - src\core\db\supabase.ts
@@ -54,6 +51,7 @@ _Generado: 2026-08-20T02:25:47.435Z_
 - src\modules\dashboard\DashboardShell.tsx
 - src\modules\dashboard\IslandsGrid.tsx
 - src\modules\dashboard\TopBar.tsx
+- src\modules\finanzas\CategoriasView.tsx
 - src\modules\finanzas\CuentasView.tsx
 - src\modules\finanzas\FinanzasModule.tsx
 - src\modules\finanzas\FinanzasNav.tsx
@@ -63,6 +61,7 @@ _Generado: 2026-08-20T02:25:47.435Z_
 - src\shared\components\MobileDrawer.tsx
 - src\shared\components\Modal.tsx
 - src\shared\components\ModuleNav.tsx
+- src\shared\components\MonthSelector.tsx
 - src\shared\components\Sidebar.tsx
 - src\shared\icons.tsx
 - src\shared\navConfig.tsx
@@ -734,20 +733,247 @@ export function TopBar({ onMenuClick }: Props) {
 
 ```
 
+### `src\modules\finanzas\CategoriasView.tsx`
+
+```tsx
+import { useEffect, useState } from 'react';
+import { Modal } from '../../shared/components/Modal';
+import { ColorPicker } from '../../shared/components/FormControls';
+import { IconPlus, IconTags } from '../../shared/icons';
+import { getCategorias, crearCategoria, actualizarCategoria, archivarCategoria, type Categoria } from '../../core/db/db';
+
+export function CategoriasView() {
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [tipoActivo, setTipoActivo] = useState<'gasto' | 'ingreso'>('gasto');
+
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [nombre, setNombre] = useState('');
+  const [emoji, setEmoji] = useState('🏷️');
+  const [color, setColor] = useState('#e74c3c');
+  const [guardando, setGuardando] = useState(false);
+
+  async function cargar() {
+    setCargando(true);
+    try {
+      setCategorias(await getCategorias());
+    } catch (err) {
+      console.error('Error cargando categorías:', err);
+      alert('No se pudieron cargar las categorías. Revisa la consola.');
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  useEffect(() => {
+    cargar();
+  }, []);
+
+  function abrirNueva() {
+    setEditandoId(null);
+    setNombre('');
+    setEmoji('🏷️');
+    setColor(tipoActivo === 'ingreso' ? '#2ecc71' : '#e74c3c');
+    setModalAbierto(true);
+  }
+
+  function abrirEditar(cat: Categoria) {
+    setEditandoId(cat.id!);
+    setNombre(cat.nombre);
+    setEmoji(cat.emoji || '🏷️');
+    setColor(cat.color);
+    setModalAbierto(true);
+  }
+
+  async function handleGuardar() {
+    if (!nombre.trim()) return alert('El nombre es obligatorio');
+
+    setGuardando(true);
+    try {
+      if (editandoId) {
+        await actualizarCategoria(editandoId, { nombre: nombre.trim(), emoji, color });
+      } else {
+        await crearCategoria({ nombre: nombre.trim(), tipo: tipoActivo, emoji, color, archivada: false });
+      }
+      await cargar();
+      setModalAbierto(false);
+    } catch (err) {
+      console.error('Error guardando categoría:', err);
+      alert('No se pudo guardar la categoría. Revisa la consola.');
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  async function handleArchivar(id: string) {
+    if (!confirm('¿Archivar esta categoría?')) return;
+    const ok = await archivarCategoria(id);
+    if (ok) await cargar();
+    else alert('No se pudo archivar la categoría.');
+  }
+
+  const categoriasFiltradas = categorias.filter((c) => c.tipo === tipoActivo);
+
+  return (
+    <div className="mt-6">
+      {/* Toggle Gasto / Ingreso */}
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          onClick={() => setTipoActivo('gasto')}
+          className="px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors"
+          style={{
+            background: tipoActivo === 'gasto' ? 'var(--bios-danger)' : 'transparent',
+            borderColor: tipoActivo === 'gasto' ? 'var(--bios-danger)' : 'var(--bios-border)',
+            color: tipoActivo === 'gasto' ? '#fff' : 'var(--bios-text-dim)',
+          }}
+        >
+          Categorías Gastos
+        </button>
+        <button
+          onClick={() => setTipoActivo('ingreso')}
+          className="px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-colors"
+          style={{
+            background: tipoActivo === 'ingreso' ? 'var(--bios-ok)' : 'transparent',
+            borderColor: tipoActivo === 'ingreso' ? 'var(--bios-ok)' : 'var(--bios-border)',
+            color: tipoActivo === 'ingreso' ? '#0a1120' : 'var(--bios-text-dim)',
+          }}
+        >
+          Categorías Ingresos
+        </button>
+
+        <button
+          onClick={abrirNueva}
+          className="ml-auto w-8 h-8 rounded-full flex items-center justify-center"
+          style={{ background: tipoActivo === 'ingreso' ? 'var(--bios-ok)' : 'var(--bios-danger)', color: '#fff' }}
+          title="Nueva categoría"
+        >
+          <IconPlus size={16} />
+        </button>
+      </div>
+
+      {cargando && (
+        <div className="text-[12px] text-center py-6" style={{ color: 'var(--bios-text-dim)' }}>
+          Cargando categorías...
+        </div>
+      )}
+
+      {!cargando && categoriasFiltradas.length === 0 && (
+        <div
+          className="rounded-[11px] border border-dashed p-6 text-center text-[12px]"
+          style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text-dim)' }}
+        >
+          <IconTags size={22} className="mx-auto mb-2" style={{ opacity: 0.5 }} />
+          Sin categorías. Usa el botón + para crear una.
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2">
+        {categoriasFiltradas.map((cat) => (
+          <div
+            key={cat.id}
+            className="flex items-center justify-between rounded-[11px] border px-3 py-2.5"
+            style={{
+              background: 'linear-gradient(160deg, var(--bios-card-a), var(--bios-card-b))',
+              borderColor: 'var(--bios-border)',
+            }}
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-[17px]">{cat.emoji || '🏷️'}</span>
+              <span className="text-[13px] font-medium" style={{ color: 'var(--bios-text)' }}>
+                {cat.nombre}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full" style={{ background: cat.color }} />
+              <button
+                onClick={() => abrirEditar(cat)}
+                className="text-[11px] px-2 py-1 rounded-md hover:bg-white/5"
+                style={{ color: 'var(--bios-text-dim)' }}
+              >
+                Editar
+              </button>
+              <button
+                onClick={() => handleArchivar(cat.id!)}
+                className="text-[11px] px-2 py-1 rounded-md hover:bg-white/5"
+                style={{ color: 'var(--bios-danger)' }}
+              >
+                Archivar
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Modal
+        open={modalAbierto}
+        title={editandoId ? 'Editar categoría' : 'Nueva categoría'}
+        onCancel={() => setModalAbierto(false)}
+        hideDefaultFooter
+      >
+        <div className="flex flex-col gap-4 mt-2">
+          <div className="flex items-center gap-3">
+            <input
+              value={emoji}
+              onChange={(e) => setEmoji(e.target.value.slice(0, 2))}
+              className="w-12 h-12 text-center text-[22px] bg-black/20 border rounded-[10px] outline-none"
+              style={{ borderColor: 'var(--bios-border)' }}
+            />
+            <div className="flex-1 flex flex-col gap-1.5">
+              <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>Nombre</label>
+              <input
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                placeholder="Ej: Restaurantes, Salario..."
+                className="w-full bg-black/20 border rounded-[10px] px-3 py-2 text-[13px] outline-none"
+                style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text)' }}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>Color</label>
+            <ColorPicker value={color} onChange={setColor} />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor: 'var(--bios-border)' }}>
+            <button
+              onClick={() => setModalAbierto(false)}
+              className="text-[11px] px-3 py-2 rounded-lg border"
+              style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text-dim)' }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleGuardar}
+              disabled={guardando}
+              className="text-[12px] font-semibold px-4 py-2 rounded-lg disabled:opacity-50"
+              style={{ background: 'var(--bios-accent)', color: '#0a1120' }}
+            >
+              {guardando ? 'Guardando...' : 'Guardar'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
+```
+
 ### `src\modules\finanzas\CuentasView.tsx`
 
 ```tsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import CuentaWidget, { type CuentaData } from './widgets/CuentaWidget';
 import { Modal } from '../../shared/components/Modal';
 import { IconPlus, IconTrash } from '../../shared/icons';
 import { ColorPicker, ImageLogoInput, ToggleCard } from '../../shared/components/FormControls';
+import { getCuentas, crearCuenta, getTransacciones, calcularSaldoCuenta } from '../../core/db/db';
 
 export function CuentasView() {
-  // Estado de las cuentas
-  const [cuentas, setCuentas] = useState<CuentaData[]>([
-    { id: 1, nombre: 'Billetera', saldoActual: 150000, saldoPrevisto: 85000, color: '#3498db' }
-  ]);
+  const [cuentas, setCuentas] = useState<CuentaData[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [guardando, setGuardando] = useState(false);
 
   // Estados del Modal
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -757,21 +983,64 @@ export function CuentasView() {
   const [nuevoColor, setNuevoColor] = useState('#3498db');
   const [incluirDashboard, setIncluirDashboard] = useState(true);
 
-  function handleGuardarCuenta() {
+  async function cargarCuentas() {
+    setCargando(true);
+    try {
+      // Traemos cuentas Y transacciones juntas: el saldo de cada cuenta
+      // depende de sumar/restar todas las transacciones que la tocan.
+      const [filas, transacciones] = await Promise.all([getCuentas(), getTransacciones()]);
+
+      setCuentas(
+        filas.map((fila) => {
+          const saldo = calcularSaldoCuenta(fila.id!, fila.saldo_inicial, transacciones);
+          return {
+            id: fila.id!,
+            nombre: fila.nombre,
+            // TODO: cuando exista navegación de mes (pantalla Transacciones/Resumen),
+            // saldoPrevisto pasa a incluir también las transacciones PENDIENTES
+            // hasta el fin del mes navegado, igual que hacía el piloto. Por ahora
+            // son iguales porque no hay mes que navegar todavía.
+            saldoActual: saldo,
+            saldoPrevisto: saldo,
+            color: fila.color || '#3498db',
+            logo: fila.logo || undefined,
+          };
+        })
+      );
+    } catch (err) {
+      console.error('Error cargando cuentas:', err);
+      alert('No se pudieron cargar las cuentas. Revisa la consola.');
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  useEffect(() => {
+    cargarCuentas();
+  }, []);
+
+  async function handleGuardarCuenta() {
     if (!nuevoNombre.trim()) return alert('El nombre es obligatorio');
 
-    const saldoParsed = parseFloat(nuevoSaldo) || 0;
-    const nuevaCuenta: CuentaData = {
-      id: Date.now(),
-      nombre: nuevoNombre,
-      saldoActual: saldoParsed,
-      saldoPrevisto: saldoParsed,
-      color: nuevoColor,
-      logo: nuevoLogo,
-    };
-
-    setCuentas([...cuentas, nuevaCuenta]);
-    limpiarYCerrar();
+    setGuardando(true);
+    try {
+      await crearCuenta({
+        nombre: nuevoNombre.trim(),
+        saldo_inicial: parseFloat(nuevoSaldo) || 0,
+        color: nuevoColor,
+        logo: nuevoLogo || undefined,
+        incluir_dashboard: incluirDashboard,
+      });
+      // Recargamos todo (cuentas + transacciones) en vez de solo empujar la
+      // nueva al estado — así el saldo se calcula igual para todas.
+      await cargarCuentas();
+      limpiarYCerrar();
+    } catch (err) {
+      console.error('Error guardando cuenta:', err);
+      alert('No se pudo guardar la cuenta. Revisa la consola.');
+    } finally {
+      setGuardando(false);
+    }
   }
 
   function limpiarYCerrar() {
@@ -783,18 +1052,12 @@ export function CuentasView() {
     setModalAbierto(false);
   }
 
-  // Ancho dinámico del input de saldo: crece en 'ch' con la cantidad de
-  // dígitos escritos, así el $ y el número siempre quedan pegados como un
-  // solo bloque centrado, sin importar qué tan grande sea la cifra.
   const anchoSaldoCh = Math.max((nuevoSaldo || '0.00').length + 1, 5);
 
   return (
     <div className="mt-6">
-      {/* Grilla de Widgets de Cuentas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-        
-        {/* Botón para abrir el Modal de Nueva Cuenta */}
-        <button 
+        <button
           onClick={() => setModalAbierto(true)}
           className="rounded-[11px] border-2 border-dashed flex flex-col items-center justify-center gap-2 min-h-[160px] transition-colors hover:bg-white/5"
           style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text-dim)' }}
@@ -805,33 +1068,29 @@ export function CuentasView() {
           <span className="text-[13px] font-medium">Nueva cuenta</span>
         </button>
 
-        {/* Listado dinámico de cuentas */}
-        {cuentas.map(cuenta => (
-          <div 
-            key={cuenta.id} 
-            className="rounded-[11px] border p-3 flex flex-col min-h-[160px]"
-            style={{
-              background: 'linear-gradient(160deg, var(--bios-card-a), var(--bios-card-b))',
-              borderColor: 'var(--bios-border)',
-            }}
-          >
-            <CuentaWidget cuenta={cuenta} />
+        {cargando && (
+          <div className="col-span-full text-[12px] text-center py-6" style={{ color: 'var(--bios-text-dim)' }}>
+            Cargando cuentas...
           </div>
-        ))}
+        )}
+
+        {!cargando &&
+          cuentas.map((cuenta) => (
+            <div
+              key={cuenta.id}
+              className="rounded-[11px] border p-3 flex flex-col min-h-[160px]"
+              style={{
+                background: 'linear-gradient(160deg, var(--bios-card-a), var(--bios-card-b))',
+                borderColor: 'var(--bios-border)',
+              }}
+            >
+              <CuentaWidget cuenta={cuenta} />
+            </div>
+          ))}
       </div>
 
-      {/* Modal de Añadir Cuenta con Pie Personalizado */}
-      <Modal
-        open={modalAbierto}
-        title="Añadir cuenta"
-        onCancel={limpiarYCerrar}
-        hideDefaultFooter
-      >
+      <Modal open={modalAbierto} title="Añadir cuenta" onCancel={limpiarYCerrar} hideDefaultFooter>
         <div className="flex flex-col mt-2">
-          
-          {/* Campo de Saldo Gigante — $ y número como un solo bloque flex
-              centrado, en vez de $ absoluto + número centrado por separado
-              (eso era lo que causaba el choque con números grandes). */}
           <div className="flex flex-col items-center justify-center mb-6 mt-2">
             <div className="flex items-center justify-center gap-1">
               <span className="text-[24px] font-display font-bold flex-shrink-0" style={{ color: 'var(--bios-text-dim)' }}>$</span>
@@ -847,22 +1106,18 @@ export function CuentasView() {
             <div className="w-full max-w-[220px] h-px mt-1 border-b border-dashed mx-auto" style={{ borderColor: 'var(--bios-border)' }} />
           </div>
 
-          {/* Nombre de la institución financiera */}
           <div className="flex flex-col gap-1.5 mb-4">
             <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>Nombre de la institución financiera</label>
-            <input 
-              type="text" 
+            <input
+              type="text"
               value={nuevoNombre}
               onChange={(e) => setNuevoNombre(e.target.value)}
-              placeholder="Ej. Bancolombia, Efectivo..." 
+              placeholder="Ej. Bancolombia, Efectivo..."
               className="w-full bg-black/20 border rounded-[10px] px-3 py-2.5 text-[13px] outline-none transition-colors"
               style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text)' }}
             />
           </div>
 
-          {/* Logo y Color — apilados verticalmente (antes iban lado a lado
-              en 2 columnas dentro de un modal de solo 420px, y se
-              apretaban/desbordaban entre sí). */}
           <div className="flex flex-col gap-4 mb-5">
             <div className="flex flex-col gap-1.5">
               <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>URL del Logo institucional</label>
@@ -874,19 +1129,17 @@ export function CuentasView() {
             </div>
           </div>
 
-          {/* Toggle de Dashboard */}
           <div className="mb-6">
-            <ToggleCard 
-              label="Incluir en la suma del dashboard" 
+            <ToggleCard
+              label="Incluir en la suma del dashboard"
               description="El saldo acumulado se sumará al patrimonio total visible."
               checked={incluirDashboard}
-              onChange={setIncluirDashboard} 
+              onChange={setIncluirDashboard}
             />
           </div>
 
-          {/* Pie de página con botones personalizados */}
           <div className="flex justify-between items-center pt-4 border-t" style={{ borderColor: 'var(--bios-border)' }}>
-            <button 
+            <button
               onClick={() => { setNuevoNombre(''); setNuevoSaldo(''); setNuevoLogo(''); setNuevoColor('#3498db'); }}
               className="flex items-center gap-1.5 text-[11px] px-3 py-2 rounded-lg transition-colors hover:bg-white/5"
               style={{ color: 'var(--bios-text-dim)' }}
@@ -894,21 +1147,17 @@ export function CuentasView() {
               <IconTrash size={14} /> Limpiar campos
             </button>
 
-            <button 
+            <button
               onClick={handleGuardarCuenta}
-              className="text-[12px] font-semibold px-4 py-2 rounded-lg transition-opacity hover:opacity-90"
-              style={{ 
-                background: 'var(--bios-accent)', 
-                color: '#0a1120'
-              }}
+              disabled={guardando}
+              className="text-[12px] font-semibold px-4 py-2 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: 'var(--bios-accent)', color: '#0a1120' }}
             >
-              Guardar cuenta
+              {guardando ? 'Guardando...' : 'Guardar cuenta'}
             </button>
           </div>
-
         </div>
       </Modal>
-
     </div>
   );
 }
@@ -920,19 +1169,34 @@ export function CuentasView() {
 import { useState } from 'react';
 import { FinanzasNav } from './FinanzasNav';
 import { CuentasView } from './CuentasView';
+import { CategoriasView } from './CategoriasView';
+import { MonthSelector } from '../../shared/components/MonthSelector';
 
 export function FinanzasModule() {
-  const [tab, setTab] = useState('cuentas'); // Puse 'cuentas' por defecto para que lo veas de una
+  const [tab, setTab] = useState('cuentas');
+  const [mesActual, setMesActual] = useState(new Date());
+
+  function moverMes(direccion: -1 | 1) {
+    setMesActual((prev) => {
+      const nuevo = new Date(prev);
+      nuevo.setMonth(nuevo.getMonth() + direccion);
+      return nuevo;
+    });
+  }
 
   return (
     <div className="pb-10">
       <div className="max-w-[1180px] mx-auto px-5 pt-4">
         <h1 className="font-display font-bold text-[15px] mb-3">Finanzas</h1>
         <FinanzasNav active={tab} onChange={setTab} />
-        
+
+        <MonthSelector mes={mesActual} onAnterior={() => moverMes(-1)} onSiguiente={() => moverMes(1)} />
+
         {/* Enrutador interno del módulo */}
         {tab === 'cuentas' ? (
           <CuentasView />
+        ) : tab === 'categorias' ? (
+          <CategoriasView />
         ) : (
           <div className="py-10 text-center font-mono text-[11px]" style={{ color: 'var(--bios-text-faint)' }}>
             — contenido de "{tab}" en construcción —
@@ -998,7 +1262,7 @@ import { IconDots, IconPlus, IconBank, IconPieChart } from '../../../shared/icon
 
 // Ahora el widget recibe la información completa de la cuenta
 export interface CuentaData {
-  id: number;
+  id: string;   // antes era number — Supabase da UUIDs (texto), no números
   nombre: string;
   saldoActual: number;
   saldoPrevisto: number;
@@ -1597,6 +1861,59 @@ function MoreRow({ item, active, onClick }: { item: ModuleNavItem; active: boole
 }
 ```
 
+### `src\shared\components\MonthSelector.tsx`
+
+```tsx
+import { IconChevronLeft, IconChevronRight } from '../icons';
+
+interface Props {
+  mes: Date;
+  onAnterior: () => void;
+  onSiguiente: () => void;
+}
+
+const MESES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+];
+
+/**
+ * Selector de mes compartido por TODO el módulo de finanzas (no es solo de
+ * una pantalla). Vive como estado en FinanzasModule.tsx y se le pasa a
+ * cualquier pantalla que necesite filtrar por el mes navegado
+ * (Transacciones, Resumen, Presupuestos, Informes...).
+ */
+export function MonthSelector({ mes, onAnterior, onSiguiente }: Props) {
+  const etiqueta = `${MESES[mes.getMonth()]} ${mes.getFullYear()}`;
+
+  return (
+    <div
+      className="flex items-center justify-between rounded-[12px] border px-2 py-2 mb-4"
+      style={{
+        background: 'linear-gradient(160deg, var(--bios-card-a), var(--bios-card-b))',
+        borderColor: 'var(--bios-border)',
+      }}
+    >
+      <button
+        onClick={onAnterior}
+        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5"
+        style={{ color: 'var(--bios-text-dim)' }}
+      >
+        <IconChevronLeft size={18} />
+      </button>
+      <h3 className="font-display font-bold text-[14px]">{etiqueta}</h3>
+      <button
+        onClick={onSiguiente}
+        className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5"
+        style={{ color: 'var(--bios-text-dim)' }}
+      >
+        <IconChevronRight size={18} />
+      </button>
+    </div>
+  );
+}
+```
+
 ### `src\shared\components\Sidebar.tsx`
 
 ```tsx
@@ -1695,7 +2012,9 @@ import {
   IconBuildingStore,
   IconCalendar,
   IconStar,
-  IconTrash, // <-- Importado de Tabler
+  IconTrash,
+  IconChevronLeft,
+  IconChevronRight,
 } from '@tabler/icons-react';
 
 // Re-exportamos con los mismos nombres que usa la app
@@ -1717,7 +2036,9 @@ export {
   IconBuildingStore,
   IconCalendar,
   IconStar,
-  IconTrash, // <-- Re-exportado para toda la app
+  IconTrash,
+  IconChevronLeft,
+  IconChevronRight,
 };
 ```
 
@@ -1772,134 +2093,17 @@ export const WIDGET_REGISTRY: WidgetDefinition[] = [
 ];
 ```
 
-### `src\core\auth\AuthGate.tsx`
-
-```tsx
-import { useState, type FormEvent, type ReactNode } from 'react';
-import { authService } from './authService';
-
-interface AuthGateProps {
-  children: ReactNode;
-}
-
-interface LoginProps {
-  onSuccess: () => void;
-}
-
-export function AuthGate({ children }: AuthGateProps) {
-  const [authenticated, setAuthenticated] = useState(authService.isAuthenticated());
-
-  if (!authenticated) {
-    return <Login onSuccess={() => setAuthenticated(true)} />;
-  }
-
-  return <>{children}</>;
-}
-
-function Login({ onSuccess }: LoginProps) {
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState(false);
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    if (authService.verifyPassword(password)) {
-      authService.setAuthenticated(true);
-      onSuccess();
-      return;
-    }
-
-    setError(true);
-    setPassword('');
-  }
-
-  return (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      height: '100vh',
-      backgroundColor: '#0f172a',
-      color: '#fff',
-      fontFamily: 'sans-serif',
-    }}>
-      <form onSubmit={handleSubmit} style={{
-        background: '#1e293b',
-        padding: '2.5rem',
-        borderRadius: '1rem',
-        boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
-        width: '100%',
-        maxWidth: '400px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1rem',
-      }}>
-        <h2 style={{ textAlign: 'center', margin: '0 0 1rem 0' }}>Acceso Protegido</h2>
-
-        <label style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
-          Contraseña Maestra
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => {
-              setPassword(event.target.value);
-              setError(false);
-            }}
-            placeholder="Ingresa tu contraseña"
-            autoFocus
-            style={{
-              display: 'block',
-              width: '100%',
-              boxSizing: 'border-box',
-              marginTop: '0.5rem',
-              padding: '0.75rem',
-              borderRadius: '0.5rem',
-              border: error ? '1px solid #ef4444' : '1px solid #334155',
-              background: '#0f172a',
-              color: '#fff',
-              fontSize: '1rem',
-              outline: 'none',
-            }}
-          />
-        </label>
-
-        {error && (
-          <span style={{ color: '#ef4444', fontSize: '0.85rem', textAlign: 'center' }}>
-            Contraseña incorrecta
-          </span>
-        )}
-
-        <button type="submit" style={{
-          padding: '0.75rem',
-          borderRadius: '0.5rem',
-          border: 'none',
-          background: '#3b82f6',
-          color: '#fff',
-          fontWeight: 'bold',
-          fontSize: '1rem',
-          cursor: 'pointer',
-          marginTop: '0.5rem',
-        }}>
-          Entrar
-        </button>
-      </form>
-    </div>
-  );
-}
-
-```
-
 ### `src\core\auth\authService.ts`
 
 ```tsx
-import { supabase } from '../supabaseClient';
+import { supabase } from '../db/supabase';
 
 export async function iniciarSesion(email: string, password: string) {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
 }
 
-// Mismo nombre que ya usaba tu TopBar.tsx — no hace falta tocar ese archivo.
+// Mismo nombre que ya usa tu TopBar.tsx — no hace falta tocar ese archivo.
 export async function clearSession() {
   await supabase.auth.signOut();
 }
@@ -1910,54 +2114,15 @@ export async function haySesionActiva(): Promise<boolean> {
 }
 ```
 
-### `src\core\auth\Login.tsx`
-
-```tsx
-// src/core/auth/authService.ts
-
-export const authService = {
-  verifyPassword(password: string): boolean {
-    const masterPassword = import.meta.env.VITE_MASTER_PASSWORD || '123456';
-    return password === masterPassword;
-  },
-
-  isAuthenticated(): boolean {
-    return sessionStorage.getItem('bios_authenticated') === 'true';
-  },
-
-  setAuthenticated(status: boolean) {
-    if (status) {
-      sessionStorage.setItem('bios_authenticated', 'true');
-    } else {
-      sessionStorage.removeItem('bios_authenticated');
-    }
-  }
-};
-
-// --- Funciones de compatibilidad para que Login.tsx no falle ---
-export function isSessionAuthenticated(): boolean {
-  return sessionStorage.getItem('bios_authenticated') === 'true';
-}
-
-export function markSessionAuthenticated(): void {
-  sessionStorage.setItem('bios_authenticated', 'true');
-}
-
-export async function hasPassword(): Promise<boolean> {
-  return true;
-}
-```
-
 ### `src\core\auth\LoginGate.tsx`
 
 ```tsx
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../db/supabase';
 
 /**
  * Envuelve TODA la app. Mientras no haya una sesión de Supabase Auth activa,
- * muestra el formulario de login y no renderiza `children` — así ninguna
- * pantalla ni petición a la base de datos ocurre antes de autenticarse.
+ * muestra el formulario de login y no renderiza `children`.
  *
  * Uso en main.tsx:
  *   <LoginGate>
@@ -2065,99 +2230,6 @@ export function LoginGate({ children }: { children: ReactNode }) {
 }
 ```
 
-### `src\core\auth\SetupPassword.tsx`
-
-```tsx
-import { useState, type FormEvent } from 'react';
-import { setPassword } from './authService';
-
-interface Props {
-  onDone: () => void;
-}
-
-export function SetupPassword({ onDone }: Props) {
-  const [password, setPasswordValue] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError(null);
-
-    if (password.length < 4) {
-      setError('La contraseña debe tener al menos 4 caracteres.');
-      return;
-    }
-    if (password !== confirm) {
-      setError('Las contraseñas no coinciden.');
-      return;
-    }
-
-    await setPassword(password);
-    onDone();
-  }
-
-  return (
-    <div className="fixed inset-0 z-10 flex items-center justify-center px-5">
-      <form
-        onSubmit={handleSubmit}
-        className="w-[280px] rounded-[14px] p-5 border text-left"
-        style={{
-          background: 'linear-gradient(160deg, var(--bios-card-a), var(--bios-card-b))',
-          borderColor: 'var(--bios-border)',
-        }}
-      >
-        <h1 className="font-display font-bold text-[20px] tracking-[3px] mb-1">BIOS</h1>
-        <p className="text-[11.5px] mb-5" style={{ color: 'var(--bios-text-dim)' }}>
-          Primera vez aquí. Crea tu contraseña de acceso.
-        </p>
-
-        <label className="block text-[11px] mb-1" style={{ color: 'var(--bios-text-dim)' }}>
-          Nueva contraseña
-        </label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPasswordValue(e.target.value)}
-          className="w-full bg-white/5 border rounded-lg px-2.5 py-2 text-[12px] mb-3 outline-none focus:ring-2"
-          style={{ borderColor: 'var(--bios-border)' }}
-          autoFocus
-        />
-
-        <label className="block text-[11px] mb-1" style={{ color: 'var(--bios-text-dim)' }}>
-          Confirmar contraseña
-        </label>
-        <input
-          type="password"
-          value={confirm}
-          onChange={(e) => setConfirm(e.target.value)}
-          className="w-full bg-white/5 border rounded-lg px-2.5 py-2 text-[12px] mb-1 outline-none focus:ring-2"
-          style={{ borderColor: 'var(--bios-border)' }}
-        />
-
-        {error && (
-          <p className="text-[10.5px] mt-2" style={{ color: 'var(--bios-danger)' }}>
-            {error}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          className="w-full mt-4 py-2 rounded-lg font-semibold text-[12px]"
-          style={{
-            background: 'linear-gradient(90deg, var(--bios-accent), var(--bios-accent-2))',
-            color: '#0a1120',
-          }}
-        >
-          Crear contraseña y entrar
-        </button>
-      </form>
-    </div>
-  );
-}
-
-```
-
 ### `src\core\db\db.ts`
 
 ```tsx
@@ -2167,15 +2239,37 @@ export interface Cuenta {
   id?: string;
   nombre: string;
   saldo_inicial: number;
-  tipo: string;
   color?: string;
   logo?: string;
   incluir_dashboard?: boolean;
 }
 
-/**
- * Obtener todas las cuentas desde Supabase
- */
+export interface Transaccion {
+  id?: string;
+  tipo: 'ingreso' | 'gasto' | 'transferencia';
+  monto: number;
+  descripcion: string;
+  fecha: string; // 'YYYY-MM-DD'
+  cuenta_id: string;
+  cuenta_destino_id?: string | null;
+  categoria_id?: string | null;
+  pagado: boolean;
+  archivada?: boolean;
+}
+
+export interface Categoria {
+  id?: string;
+  nombre: string;
+  tipo: 'gasto' | 'ingreso';
+  color: string;
+  emoji?: string;
+  archivada?: boolean;
+}
+
+// ==========================================
+// CUENTAS
+// ==========================================
+
 export async function getCuentas(): Promise<Cuenta[]> {
   const { data, error } = await supabase
     .from('cuentas')
@@ -2190,9 +2284,6 @@ export async function getCuentas(): Promise<Cuenta[]> {
   return data || [];
 }
 
-/**
- * Guardar/Crear una nueva cuenta en Supabase
- */
 export async function crearCuenta(cuenta: Omit<Cuenta, 'id'>): Promise<Cuenta | null> {
   const { data, error } = await supabase
     .from('cuentas')
@@ -2208,9 +2299,6 @@ export async function crearCuenta(cuenta: Omit<Cuenta, 'id'>): Promise<Cuenta | 
   return data;
 }
 
-/**
- * Eliminar una cuenta de Supabase
- */
 export async function eliminarCuenta(id: string): Promise<boolean> {
   const { error } = await supabase
     .from('cuentas')
@@ -2219,6 +2307,102 @@ export async function eliminarCuenta(id: string): Promise<boolean> {
 
   if (error) {
     console.error('Error al eliminar cuenta:', error.message);
+    return false;
+  }
+
+  return true;
+}
+
+// ==========================================
+// TRANSACCIONES
+// ==========================================
+
+export async function getTransacciones(): Promise<Transaccion[]> {
+  const { data, error } = await supabase
+    .from('transacciones')
+    .select('*')
+    .eq('archivada', false);
+
+  if (error) {
+    console.error('Error al obtener transacciones:', error.message);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Saldo real de una cuenta = saldo inicial + transacciones PAGADAS hasta hoy.
+ */
+export function calcularSaldoCuenta(
+  cuentaId: string,
+  saldoInicial: number,
+  transacciones: Transaccion[]
+): number {
+  const hoy = new Date().toISOString().split('T')[0];
+  let saldo = saldoInicial;
+
+  transacciones
+    .filter((t) => t.fecha <= hoy && t.pagado)
+    .forEach((t) => {
+      if (t.tipo === 'ingreso' && t.cuenta_id === cuentaId) saldo += t.monto;
+      if (t.tipo === 'gasto' && t.cuenta_id === cuentaId) saldo -= t.monto;
+      if (t.tipo === 'transferencia') {
+        if (t.cuenta_id === cuentaId) saldo -= t.monto;
+        if (t.cuenta_destino_id === cuentaId) saldo += t.monto;
+      }
+    });
+
+  return saldo;
+}
+
+// ==========================================
+// CATEGORÍAS
+// ==========================================
+
+export async function getCategorias(): Promise<Categoria[]> {
+  const { data, error } = await supabase
+    .from('categorias')
+    .select('*')
+    .eq('archivada', false)
+    .order('nombre', { ascending: true });
+
+  if (error) {
+    console.error('Error al obtener categorías:', error.message);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function crearCategoria(categoria: Omit<Categoria, 'id'>): Promise<Categoria | null> {
+  const { data, error } = await supabase
+    .from('categorias')
+    .insert([categoria])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error al crear categoría:', error.message);
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+export async function actualizarCategoria(id: string, cambios: Partial<Categoria>): Promise<void> {
+  const { error } = await supabase.from('categorias').update(cambios).eq('id', id);
+  if (error) {
+    console.error('Error al actualizar categoría:', error.message);
+    throw new Error(error.message);
+  }
+}
+
+export async function archivarCategoria(id: string): Promise<boolean> {
+  const { error } = await supabase.from('categorias').update({ archivada: true }).eq('id', id);
+
+  if (error) {
+    console.error('Error al archivar categoría:', error.message);
     return false;
   }
 
