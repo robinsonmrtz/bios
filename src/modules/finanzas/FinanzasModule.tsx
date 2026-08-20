@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { FinanzasNav } from './FinanzasNav';
 import { CuentasView } from './CuentasView';
 import { CategoriasView } from './CategoriasView';
+import { TransaccionesView } from './TransaccionesView';
 import { MonthSelector } from '../../shared/components/MonthSelector';
 
 export function FinanzasModule() {
@@ -29,7 +30,9 @@ export function FinanzasModule() {
           <CuentasView />
         ) : tab === 'categorias' ? (
           <CategoriasView />
-        ) : (
+          ) : tab === 'transacciones' ? (
+         <TransaccionesView mesActual={mesActual} />
+          ) : (
           <div className="py-10 text-center font-mono text-[11px]" style={{ color: 'var(--bios-text-faint)' }}>
             — contenido de "{tab}" en construcción —
           </div>

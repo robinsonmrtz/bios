@@ -20,6 +20,8 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconBriefcase,
+  IconFilter,
+  IconPencil,
 } from '@tabler/icons-react';
 
 // Re-exportamos con los mismos nombres que usa la app
@@ -45,4 +47,6 @@ export {
   IconChevronLeft,
   IconChevronRight,
   IconBriefcase as IconBriefcase,
+  IconFilter,
+  IconPencil,
 };

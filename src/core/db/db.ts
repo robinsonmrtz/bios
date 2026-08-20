@@ -18,7 +18,10 @@ export interface Transaccion {
   cuenta_id: string;
   cuenta_destino_id?: string | null;
   categoria_id?: string | null;
+  comercio?: string | null;
   pagado: boolean;
+  gasto_fijo?: boolean;
+  observacion?: string | null;
   archivada?: boolean;
 }
 
@@ -45,36 +48,24 @@ export async function getCuentas(): Promise<Cuenta[]> {
     console.error('Error al obtener cuentas:', error.message);
     return [];
   }
-
   return data || [];
 }
 
 export async function crearCuenta(cuenta: Omit<Cuenta, 'id'>): Promise<Cuenta | null> {
-  const { data, error } = await supabase
-    .from('cuentas')
-    .insert([cuenta])
-    .select()
-    .single();
-
+  const { data, error } = await supabase.from('cuentas').insert([cuenta]).select().single();
   if (error) {
     console.error('Error al crear cuenta:', error.message);
     throw new Error(error.message);
   }
-
   return data;
 }
 
 export async function eliminarCuenta(id: string): Promise<boolean> {
-  const { error } = await supabase
-    .from('cuentas')
-    .delete()
-    .eq('id', id);
-
+  const { error } = await supabase.from('cuentas').delete().eq('id', id);
   if (error) {
     console.error('Error al eliminar cuenta:', error.message);
     return false;
   }
-
   return true;
 }
 
@@ -92,8 +83,44 @@ export async function getTransacciones(): Promise<Transaccion[]> {
     console.error('Error al obtener transacciones:', error.message);
     return [];
   }
-
   return data || [];
+}
+
+export async function crearTransaccion(t: Omit<Transaccion, 'id'>): Promise<Transaccion | null> {
+  const { data, error } = await supabase.from('transacciones').insert([t]).select().single();
+  if (error) {
+    console.error('Error al crear transacción:', error.message);
+    throw new Error(error.message);
+  }
+  return data;
+}
+
+export async function actualizarTransaccion(id: string, cambios: Partial<Transaccion>): Promise<void> {
+  const { error } = await supabase.from('transacciones').update(cambios).eq('id', id);
+  if (error) {
+    console.error('Error al actualizar transacción:', error.message);
+    throw new Error(error.message);
+  }
+}
+
+export async function archivarTransaccion(id: string): Promise<boolean> {
+  const { error } = await supabase.from('transacciones').update({ archivada: true }).eq('id', id);
+  if (error) {
+    console.error('Error al archivar transacción:', error.message);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Filtra transacciones por mes/año de un Date dado. Uso: en la pantalla de
+ * Transacciones, cruzar esto con el `mesActual` que viene de MonthSelector.
+ */
+export function filtrarPorMes(transacciones: Transaccion[], mes: Date): Transaccion[] {
+  const year = mes.getFullYear();
+  const month = String(mes.getMonth() + 1).padStart(2, '0');
+  const prefijo = `${year}-${month}`;
+  return transacciones.filter((t) => t.fecha.startsWith(prefijo));
 }
 
 /**
@@ -136,22 +163,15 @@ export async function getCategorias(): Promise<Categoria[]> {
     console.error('Error al obtener categorías:', error.message);
     return [];
   }
-
   return data || [];
 }
 
 export async function crearCategoria(categoria: Omit<Categoria, 'id'>): Promise<Categoria | null> {
-  const { data, error } = await supabase
-    .from('categorias')
-    .insert([categoria])
-    .select()
-    .single();
-
+  const { data, error } = await supabase.from('categorias').insert([categoria]).select().single();
   if (error) {
     console.error('Error al crear categoría:', error.message);
     throw new Error(error.message);
   }
-
   return data;
 }
 
@@ -165,11 +185,9 @@ export async function actualizarCategoria(id: string, cambios: Partial<Categoria
 
 export async function archivarCategoria(id: string): Promise<boolean> {
   const { error } = await supabase.from('categorias').update({ archivada: true }).eq('id', id);
-
   if (error) {
     console.error('Error al archivar categoría:', error.message);
     return false;
   }
-
   return true;
 }

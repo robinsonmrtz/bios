@@ -128,13 +128,13 @@ export function CuentasView() {
         <div className="flex flex-col mt-2">
           <div className="flex flex-col items-center justify-center mb-6 mt-2">
             <div className="flex items-center justify-center gap-1">
-              <span className="text-[24px] font-display font-bold flex-shrink-0" style={{ color: 'var(--bios-text-dim)' }}>$</span>
+              <span className="text-[18px] sm:text-[24px] font-display font-bold flex-shrink-0" style={{ color: 'var(--bios-text-dim)' }}>$</span>
               <input
                 type="number"
                 value={nuevoSaldo}
                 onChange={(e) => setNuevoSaldo(e.target.value)}
                 placeholder="0.00"
-                className="bg-transparent text-[38px] font-display font-bold outline-none text-left min-w-0"
+                className="bg-transparent text-[26px] sm:text-[38px] font-display font-bold outline-none text-left min-w-0"
                 style={{ color: 'var(--bios-text)', width: `${anchoSaldoCh}ch` }}
               />
             </div>
