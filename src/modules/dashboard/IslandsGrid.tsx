@@ -10,12 +10,11 @@ interface WidgetData {
   type: WidgetType;
   colSpan: SpanSize;
   rowSpan: SpanSize;
-  col: number; // NUEVO: Posición fija en columna
-  row: number; // NUEVO: Posición fija en fila
+  col: number;
+  row: number;
 }
 
 // --- CONFIGURACIÓN INICIAL DE LA GRILLA ---
-// Solo definimos los widgets reales con sus posiciones iniciales en un grid de 4 columnas
 const REAL_WIDGETS: WidgetData[] = [
   { id: 'w-finanzas', type: 'finanzas', colSpan: 2, rowSpan: 1, col: 1, row: 1 },
   { id: 'w-tareas', type: 'tareas', colSpan: 1, rowSpan: 2, col: 3, row: 1 },
@@ -24,28 +23,17 @@ const REAL_WIDGETS: WidgetData[] = [
   { id: 'w-rendimiento', type: 'rendimiento', colSpan: 2, rowSpan: 2, col: 1, row: 2 },
 ];
 
-// Función para rellenar los huecos vacíos automáticamente basados en los widgets reales
 function generateGrid(realWidgets: WidgetData[], minRows = 5, cols = 4): WidgetData[] {
-  const maxRow = Math.max(minRows, ...realWidgets.map(w => w.row + w.rowSpan - 1));
+  const maxRow = Math.max(minRows, ...realWidgets.map((w) => w.row + w.rowSpan - 1));
   const grid: WidgetData[] = [...realWidgets];
 
   for (let r = 1; r <= maxRow; r++) {
     for (let c = 1; c <= cols; c++) {
-      // Verificamos si esta celda ya está cubierta por un widget real
-      const isCovered = realWidgets.some(w =>
-        c >= w.col && c < w.col + w.colSpan &&
-        r >= w.row && r < w.row + w.rowSpan
+      const isCovered = realWidgets.some(
+        (w) => c >= w.col && c < w.col + w.colSpan && r >= w.row && r < w.row + w.rowSpan
       );
-      
       if (!isCovered) {
-        grid.push({
-          id: `empty-${r}-${c}`,
-          type: 'empty',
-          colSpan: 1,
-          rowSpan: 1,
-          col: c,
-          row: r
-        });
+        grid.push({ id: `empty-${r}-${c}`, type: 'empty', colSpan: 1, rowSpan: 1, col: c, row: r });
       }
     }
   }
@@ -54,7 +42,7 @@ function generateGrid(realWidgets: WidgetData[], minRows = 5, cols = 4): WidgetD
 
 const INITIAL_WIDGETS = generateGrid(REAL_WIDGETS);
 
-// --- ISLA (contenedor con el punto de agarre) ---
+// --- ISLA (contenedor con el punto de agarre, SOLO escritorio) ---
 function Island({
   children,
   colSpan = 1,
@@ -94,12 +82,11 @@ function Island({
       className={`relative rounded-[14px] p-1.5 h-full w-full transition-opacity duration-200 ${
         isDragging ? 'opacity-40 scale-[0.98]' : 'opacity-100'
       }`}
-      style={{ 
-        border: '1px dashed rgba(255,255,255,0.12)', 
+      style={{
+        border: '1px dashed rgba(255,255,255,0.12)',
         background: 'rgba(255,255,255,0.015)',
-        // NUEVO: Posición Absoluta dentro del CSS Grid para evitar saltos y movimientos automáticos
         gridColumn: `${col} / span ${colSpan}`,
-        gridRow: `${row} / span ${rowSpan}`
+        gridRow: `${row} / span ${rowSpan}`,
       }}
     >
       {showHandle && (
@@ -143,7 +130,7 @@ function GhostSlot() {
   return <div className="rounded-[11px] h-full w-full" style={{ border: '1px dashed rgba(255,255,255,0.15)' }} />;
 }
 
-// --- RENDERIZADOR DE WIDGETS ---
+// --- RENDERIZADOR DE CONTENIDO (compartido entre escritorio y móvil) ---
 function renderWidgetContent(type: WidgetType) {
   switch (type) {
     case 'finanzas':
@@ -173,17 +160,11 @@ function renderWidgetContent(type: WidgetType) {
         <Card>
           <CardHeader dot="var(--bios-warn)" title="Tareas" />
           <div className="flex-1 flex flex-col gap-2 mt-1">
-            <div
-              className="flex justify-between text-[11px] p-2 rounded-md bg-white/5"
-              style={{ color: 'var(--bios-text-dim)' }}
-            >
+            <div className="flex justify-between text-[11px] p-2 rounded-md bg-white/5" style={{ color: 'var(--bios-text-dim)' }}>
               <span>Subir a Prod</span>
               <b style={{ color: 'var(--bios-danger)' }}>12:00</b>
             </div>
-            <div
-              className="flex justify-between text-[11px] p-2 rounded-md bg-white/5"
-              style={{ color: 'var(--bios-text-dim)' }}
-            >
+            <div className="flex justify-between text-[11px] p-2 rounded-md bg-white/5" style={{ color: 'var(--bios-text-dim)' }}>
               <span>Revisión</span>
               <b style={{ color: 'var(--bios-text)' }}>15:30</b>
             </div>
@@ -264,38 +245,31 @@ export function IslandsGrid() {
     setArmedId(null);
   };
 
-  // Verifica si el movimiento es legal visualmente (muestra cursor "bloqueado" si no cabe)
   const handleDragOver = (e: DragEvent, targetWidget: WidgetData) => {
     e.preventDefault();
-    
+
     if (targetWidget.type !== 'empty') {
       e.dataTransfer.dropEffect = 'none';
       return;
     }
 
-    const draggedWidget = widgets.find(w => w.id === draggedId);
+    const draggedWidget = widgets.find((w) => w.id === draggedId);
     if (!draggedWidget) return;
 
-    // Calculamos si el widget que arrastramos cabe en el destino
     const targetCol = targetWidget.col;
     const targetRow = targetWidget.row;
 
-    // 1. Validar que no se salga del grid por la derecha (4 columnas)
     if (targetCol + draggedWidget.colSpan - 1 > 4) {
       e.dataTransfer.dropEffect = 'none';
       return;
     }
 
-    // 2. Validar colisión matemática con otros widgets reales
-    const hasCollision = widgets.some(w => {
+    const hasCollision = widgets.some((w) => {
       if (w.id === draggedId || w.type === 'empty') return false;
-      
       const wRight = w.col + w.colSpan - 1;
       const wBottom = w.row + w.rowSpan - 1;
       const dropRight = targetCol + draggedWidget.colSpan - 1;
       const dropBottom = targetRow + draggedWidget.rowSpan - 1;
-
-      // Si intersectan en algún punto, hay colisión
       return !(w.col > dropRight || wRight < targetCol || w.row > dropBottom || wBottom < targetRow);
     });
 
@@ -314,16 +288,15 @@ export function IslandsGrid() {
       const targetWidget = prev.find((w) => w.id === targetId);
 
       if (!draggedWidget || !targetWidget || targetWidget.type !== 'empty') {
-        return prev; // Destino inválido
+        return prev;
       }
 
       const targetCol = targetWidget.col;
       const targetRow = targetWidget.row;
 
-      // Doble validación de colisión (misma lógica del dragOver por seguridad)
       if (targetCol + draggedWidget.colSpan - 1 > 4) return prev;
 
-      const hasCollision = prev.some(w => {
+      const hasCollision = prev.some((w) => {
         if (w.id === draggedId || w.type === 'empty') return false;
         const wRight = w.col + w.colSpan - 1;
         const wBottom = w.row + w.rowSpan - 1;
@@ -332,42 +305,59 @@ export function IslandsGrid() {
         return !(w.col > dropRight || wRight < targetCol || w.row > dropBottom || wBottom < targetRow);
       });
 
-      if (hasCollision) return prev; // El hueco no es lo suficientemente grande, abortamos
+      if (hasCollision) return prev;
 
-      // Actualizamos solo las coordenadas del widget movido
       const realWidgets = prev
-        .filter(w => w.type !== 'empty')
-        .map(w => w.id === draggedId ? { ...w, col: targetCol, row: targetRow } : w);
+        .filter((w) => w.type !== 'empty')
+        .map((w) => (w.id === draggedId ? { ...w, col: targetCol, row: targetRow } : w));
 
-      // Regeneramos los espacios vacíos limpiamente
       return generateGrid(realWidgets);
     });
-    
+
     setDraggedId(null);
   };
 
+  // Solo los widgets reales (sin los huecos fantasma), en el orden en que
+  // quedaron dispuestos en escritorio: fila arriba->abajo, columna izq->der.
+  const widgetsParaMovil = widgets
+    .filter((w) => w.type !== 'empty')
+    .sort((a, b) => a.row - b.row || a.col - b.col);
+
   return (
-    // IMPORTANTE: Fijamos las columnas a 4 para que las coordenadas funcionen perfecto.
-    <div className="grid grid-cols-4 gap-3 auto-rows-[130px] items-stretch min-w-[700px] overflow-x-auto">
-      {widgets.map((widget) => (
-        <Island
-          key={widget.id}
-          colSpan={widget.colSpan}
-          rowSpan={widget.rowSpan}
-          col={widget.col}
-          row={widget.row}
-          draggableEnabled={armedId === widget.id}
-          isDragging={draggedId === widget.id}
-          showHandle={widget.type !== 'empty'}
-          onHandleDown={() => setArmedId(widget.id)}
-          onDragStart={(e) => handleDragStart(e, widget.id)}
-          onDragEnd={handleDragEnd}
-          onDragOver={(e) => handleDragOver(e, widget)}
-          onDrop={(e) => handleDrop(e, widget.id)}
-        >
-          {renderWidgetContent(widget.type)}
-        </Island>
-      ))}
-    </div>
+    <>
+      {/* ============ ESCRITORIO / TABLET: grid arrastrable ============ */}
+      <div className="hidden md:grid grid-cols-4 gap-3 auto-rows-[130px] items-stretch min-w-[700px] overflow-x-auto">
+        {widgets.map((widget) => (
+          <Island
+            key={widget.id}
+            colSpan={widget.colSpan}
+            rowSpan={widget.rowSpan}
+            col={widget.col}
+            row={widget.row}
+            draggableEnabled={armedId === widget.id}
+            isDragging={draggedId === widget.id}
+            showHandle={widget.type !== 'empty'}
+            onHandleDown={() => setArmedId(widget.id)}
+            onDragStart={(e) => handleDragStart(e, widget.id)}
+            onDragEnd={handleDragEnd}
+            onDragOver={(e) => handleDragOver(e, widget)}
+            onDrop={(e) => handleDrop(e, widget.id)}
+          >
+            {renderWidgetContent(widget.type)}
+          </Island>
+        ))}
+      </div>
+
+      {/* ============ MÓVIL: lista apilada de solo lectura ============ */}
+      {/* Mismo estado `widgets`, sin drag, sin huecos fantasma, orden
+          heredado de la posición que tenían en escritorio (fila, columna). */}
+      <div className="flex md:hidden flex-col gap-3">
+        {widgetsParaMovil.map((widget) => (
+          <div key={widget.id} className="min-h-[130px]">
+            {renderWidgetContent(widget.type)}
+          </div>
+        ))}
+      </div>
+    </>
   );
 }

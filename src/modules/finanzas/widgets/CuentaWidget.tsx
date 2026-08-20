@@ -2,7 +2,7 @@ import { IconDots, IconPlus, IconBank, IconPieChart } from '../../../shared/icon
 
 // Ahora el widget recibe la información completa de la cuenta
 export interface CuentaData {
-  id: number;
+  id: string;   // antes era number — Supabase da UUIDs (texto), no números
   nombre: string;
   saldoActual: number;
   saldoPrevisto: number;

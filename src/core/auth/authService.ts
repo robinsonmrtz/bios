@@ -1,47 +1,16 @@
-export const authService = {
-  verifyPassword(password: string): boolean {
-    const storedPassword = localStorage.getItem('bios_master_password');
-    const masterPassword = storedPassword || import.meta.env.VITE_MASTER_PASSWORD || '123456';
-    return password === masterPassword;
-  },
+import { supabase } from '../db/supabase';
 
-  isAuthenticated(): boolean {
-    return sessionStorage.getItem('bios_authenticated') === 'true';
-  },
-
-  setAuthenticated(status: boolean) {
-    if (status) {
-      sessionStorage.setItem('bios_authenticated', 'true');
-    } else {
-      sessionStorage.removeItem('bios_authenticated');
-    }
-  },
-
-  setPassword(password: string): void {
-    localStorage.setItem('bios_master_password', password);
-  },
-
-  clearSession() {
-    sessionStorage.removeItem('bios_authenticated');
-  }
-};
-
-export function isSessionAuthenticated(): boolean {
-  return sessionStorage.getItem('bios_authenticated') === 'true';
+export async function iniciarSesion(email: string, password: string) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
 }
 
-export function markSessionAuthenticated(): void {
-  sessionStorage.setItem('bios_authenticated', 'true');
+// Mismo nombre que ya usa tu TopBar.tsx — no hace falta tocar ese archivo.
+export async function clearSession() {
+  await supabase.auth.signOut();
 }
 
-export function clearSession(): void {
-  sessionStorage.removeItem('bios_authenticated');
-}
-
-export async function hasPassword(): Promise<boolean> {
-  return Boolean(localStorage.getItem('bios_master_password') || import.meta.env.VITE_MASTER_PASSWORD || '123456');
-}
-
-export function setPassword(password: string): void {
-  authService.setPassword(password);
+export async function haySesionActiva(): Promise<boolean> {
+  const { data } = await supabase.auth.getSession();
+  return !!data.session;
 }

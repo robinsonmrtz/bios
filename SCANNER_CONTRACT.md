@@ -5,7 +5,7 @@
 > tus convenciones reales.
 
 ## Stack
-- React + TypeScript + Tailwind CSS + IndexedDB
+- React + TypeScript + Tailwind CSS + Superbase + Vercel
 
 ## Convenciones de módulos
 - Cada módulo vive en `src/modules/<nombre>` y es independiente.

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AuthGate } from './core/auth/AuthGate';
+ import { LoginGate } from "./core/auth/LoginGate";
 import { GridBackground } from './shared/components/GridBackground';
 import { AppLayout } from './modules/dashboard/AppLayout';
 import { DashboardShell } from './modules/dashboard/DashboardShell';
@@ -11,11 +11,11 @@ function App() {
   return (
     <div className="min-h-screen relative">
       <GridBackground />
-      <AuthGate>
+      <LoginGate>
         <AppLayout activeModule={activeModule} onSelectModule={setActiveModule}>
           {activeModule === 'finanzas' ? <FinanzasModule /> : <DashboardShell />}
         </AppLayout>
-      </AuthGate>
+      </LoginGate>
     </div>
   );
 }

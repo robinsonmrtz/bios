@@ -29,11 +29,12 @@ const CONFIG = {
   // moviste la carpeta y quedaron restos en otro lado.
   modulesDirName: "modules",
 
-  // Nombre de carpeta que se considera "código compartido". Igual que
-  // arriba: se buscan TODAS las que existan. Las que estén DENTRO de un
-  // módulo (ej: src/modules/dashboard/shared) no se listan aparte porque
-  // ya se incluyen solas al escanear ese módulo.
-  sharedDirName: "shared",
+  // Nombres de carpeta que se consideran "código de infraestructura/
+  // compartido". El script busca TODAS las que existan con estos nombres,
+  // sin importar dónde estén. Las que estén DENTRO de un módulo (ej:
+  // src/modules/dashboard/shared) no se listan aparte porque ya se
+  // incluyen solas al escanear ese módulo.
+  sharedDirNames: ['shared', 'core'],
 
   // Archivos de configuración de raíz que dan contexto útil al LLM
   rootConfigFiles: [
@@ -129,10 +130,11 @@ function discoverModules() {
   return { moduleMap, moduleRoots };
 }
 
-// Carpetas "shared" globales = todas las que existan, EXCEPTO las que
+// Carpetas "compartidas/infraestructura" globales = todas las que existan
+// con cualquiera de los nombres en CONFIG.sharedDirNames, EXCEPTO las que
 // están dentro de alguna ruta de módulo (esas ya viajan con su módulo).
 function discoverGlobalSharedDirs(allModulePaths) {
-  const allShared = findAllDirsNamed(CONFIG.sharedDirName);
+  const allShared = CONFIG.sharedDirNames.flatMap((name) => findAllDirsNamed(name));
   return allShared.filter(
     (s) => !allModulePaths.some((mp) => s === mp || s.startsWith(mp + path.sep))
   );
@@ -239,7 +241,7 @@ function main() {
   const globalSharedDirs = discoverGlobalSharedDirs(allModulePaths);
   if (globalSharedDirs.length > 1) {
     duplicateWarnings.push(
-      `⚠️ Hay ${globalSharedDirs.length} carpetas "shared" globales distintas: ${globalSharedDirs.join(
+      `⚠️ Hay ${globalSharedDirs.length} carpetas compartidas/infraestructura (shared, core...) distintas: ${globalSharedDirs.join(
         " , "
       )} — revisa si deberían unificarse.`
     );
@@ -276,7 +278,7 @@ function main() {
       .map((m) => `- ${m}  (${moduleMap[m].join(" , ")})`)
       .join("\n") || "(ninguno)"
   }\n\n`;
-  out += `## Carpetas "shared" globales incluidas\n${
+  out += `## Carpetas compartidas/infraestructura incluidas (shared, core...)\n${
     globalSharedDirs.map((s) => `- ${s}`).join("\n") || "(ninguna)"
   }\n\n`;
   out += `## Contrato de desarrollo\n\n${contract}\n\n`;

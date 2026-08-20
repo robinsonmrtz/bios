@@ -4,7 +4,6 @@ export interface Cuenta {
   id?: string;
   nombre: string;
   saldo_inicial: number;
-  tipo: string;
   color?: string;
   logo?: string;
   incluir_dashboard?: boolean;

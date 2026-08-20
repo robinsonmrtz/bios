@@ -1,6 +1,10 @@
 # Escaneo: app-completa
 
-_Generado: 2026-08-19T06:06:57.642Z_
+_Generado: 2026-08-20T02:25:47.435Z_
+
+## ⚠️ Posibles duplicados detectados
+
+- ⚠️ Hay 2 carpetas compartidas/infraestructura (shared, core...) distintas: src\shared , src\core — revisa si deberían unificarse.
 
 ## Carpetas "modules" encontradas en el proyecto
 - src\modules
@@ -9,8 +13,9 @@ _Generado: 2026-08-19T06:06:57.642Z_
 - dashboard  (src\modules\dashboard)
 - finanzas  (src\modules\finanzas)
 
-## Carpetas "shared" globales incluidas
+## Carpetas compartidas/infraestructura incluidas (shared, core...)
 - src\shared
+- src\core
 
 ## Contrato de desarrollo
 
@@ -21,7 +26,7 @@ _Generado: 2026-08-19T06:06:57.642Z_
 > tus convenciones reales.
 
 ## Stack
-- React + TypeScript + Tailwind CSS + IndexedDB
+- React + TypeScript + Tailwind CSS + Superbase + Vercel
 
 ## Convenciones de módulos
 - Cada módulo vive en `src/modules/<nombre>` y es independiente.
@@ -38,12 +43,22 @@ _Generado: 2026-08-19T06:06:57.642Z_
 ## Árbol de archivos incluidos
 
 - package.json
+- src\core\auth\AuthGate.tsx
+- src\core\auth\Login.tsx
+- src\core\auth\LoginGate.tsx
+- src\core\auth\SetupPassword.tsx
+- src\core\auth\authService.ts
+- src\core\db\db.ts
+- src\core\db\supabase.ts
 - src\modules\dashboard\AppLayout.tsx
 - src\modules\dashboard\DashboardShell.tsx
 - src\modules\dashboard\IslandsGrid.tsx
 - src\modules\dashboard\TopBar.tsx
+- src\modules\finanzas\CuentasView.tsx
 - src\modules\finanzas\FinanzasModule.tsx
 - src\modules\finanzas\FinanzasNav.tsx
+- src\modules\finanzas\widgets\CuentaWidget.tsx
+- src\shared\components\FormControls.tsx
 - src\shared\components\GridBackground.tsx
 - src\shared\components\MobileDrawer.tsx
 - src\shared\components\Modal.tsx
@@ -51,6 +66,7 @@ _Generado: 2026-08-19T06:06:57.642Z_
 - src\shared\components\Sidebar.tsx
 - src\shared\icons.tsx
 - src\shared\navConfig.tsx
+- src\shared\widgetRegistry.ts
 - tsconfig.json
 - vite.config.ts
 
@@ -72,6 +88,7 @@ _Generado: 2026-08-19T06:06:57.642Z_
     "scan": "node scripts/scan.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
     "@tabler/icons-react": "^3.46.0",
     "idb": "^8.0.3",
     "react": "^19.2.8",
@@ -88,7 +105,8 @@ _Generado: 2026-08-19T06:06:57.642Z_
     "postcss": "^8.5.26",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",
-    "vite": "^8.2.0"
+    "vite": "^8.2.0",
+    "vite-plugin-pwa": "^1.3.0"
   }
 }
 
@@ -112,12 +130,36 @@ _Generado: 2026-08-19T06:06:57.642Z_
 ```tsx
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { VitePWA } from 'vite-plugin-pwa'
 
-// https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      manifest: {
+        name: 'BIOS App',
+        short_name: 'BIOS',
+        description: 'Mi sistema personal de finanzas y gestión',
+        theme_color: '#0f1626',
+        background_color: '#0a1120',
+        display: 'standalone', // Esto es la magia que quita la barra de Safari en el iPhone
+        icons: [
+          {
+            src: 'pwa-192x192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: 'pwa-512x512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          }
+        ]
+      }
+    })
+  ],
 })
-
 ```
 
 ### `src\modules\dashboard\AppLayout.tsx`
@@ -212,12 +254,11 @@ interface WidgetData {
   type: WidgetType;
   colSpan: SpanSize;
   rowSpan: SpanSize;
-  col: number; // NUEVO: Posición fija en columna
-  row: number; // NUEVO: Posición fija en fila
+  col: number;
+  row: number;
 }
 
 // --- CONFIGURACIÓN INICIAL DE LA GRILLA ---
-// Solo definimos los widgets reales con sus posiciones iniciales en un grid de 4 columnas
 const REAL_WIDGETS: WidgetData[] = [
   { id: 'w-finanzas', type: 'finanzas', colSpan: 2, rowSpan: 1, col: 1, row: 1 },
   { id: 'w-tareas', type: 'tareas', colSpan: 1, rowSpan: 2, col: 3, row: 1 },
@@ -226,28 +267,17 @@ const REAL_WIDGETS: WidgetData[] = [
   { id: 'w-rendimiento', type: 'rendimiento', colSpan: 2, rowSpan: 2, col: 1, row: 2 },
 ];
 
-// Función para rellenar los huecos vacíos automáticamente basados en los widgets reales
 function generateGrid(realWidgets: WidgetData[], minRows = 5, cols = 4): WidgetData[] {
-  const maxRow = Math.max(minRows, ...realWidgets.map(w => w.row + w.rowSpan - 1));
+  const maxRow = Math.max(minRows, ...realWidgets.map((w) => w.row + w.rowSpan - 1));
   const grid: WidgetData[] = [...realWidgets];
 
   for (let r = 1; r <= maxRow; r++) {
     for (let c = 1; c <= cols; c++) {
-      // Verificamos si esta celda ya está cubierta por un widget real
-      const isCovered = realWidgets.some(w =>
-        c >= w.col && c < w.col + w.colSpan &&
-        r >= w.row && r < w.row + w.rowSpan
+      const isCovered = realWidgets.some(
+        (w) => c >= w.col && c < w.col + w.colSpan && r >= w.row && r < w.row + w.rowSpan
       );
-      
       if (!isCovered) {
-        grid.push({
-          id: `empty-${r}-${c}`,
-          type: 'empty',
-          colSpan: 1,
-          rowSpan: 1,
-          col: c,
-          row: r
-        });
+        grid.push({ id: `empty-${r}-${c}`, type: 'empty', colSpan: 1, rowSpan: 1, col: c, row: r });
       }
     }
   }
@@ -256,7 +286,7 @@ function generateGrid(realWidgets: WidgetData[], minRows = 5, cols = 4): WidgetD
 
 const INITIAL_WIDGETS = generateGrid(REAL_WIDGETS);
 
-// --- ISLA (contenedor con el punto de agarre) ---
+// --- ISLA (contenedor con el punto de agarre, SOLO escritorio) ---
 function Island({
   children,
   colSpan = 1,
@@ -296,12 +326,11 @@ function Island({
       className={`relative rounded-[14px] p-1.5 h-full w-full transition-opacity duration-200 ${
         isDragging ? 'opacity-40 scale-[0.98]' : 'opacity-100'
       }`}
-      style={{ 
-        border: '1px dashed rgba(255,255,255,0.12)', 
+      style={{
+        border: '1px dashed rgba(255,255,255,0.12)',
         background: 'rgba(255,255,255,0.015)',
-        // NUEVO: Posición Absoluta dentro del CSS Grid para evitar saltos y movimientos automáticos
         gridColumn: `${col} / span ${colSpan}`,
-        gridRow: `${row} / span ${rowSpan}`
+        gridRow: `${row} / span ${rowSpan}`,
       }}
     >
       {showHandle && (
@@ -345,7 +374,7 @@ function GhostSlot() {
   return <div className="rounded-[11px] h-full w-full" style={{ border: '1px dashed rgba(255,255,255,0.15)' }} />;
 }
 
-// --- RENDERIZADOR DE WIDGETS ---
+// --- RENDERIZADOR DE CONTENIDO (compartido entre escritorio y móvil) ---
 function renderWidgetContent(type: WidgetType) {
   switch (type) {
     case 'finanzas':
@@ -375,17 +404,11 @@ function renderWidgetContent(type: WidgetType) {
         <Card>
           <CardHeader dot="var(--bios-warn)" title="Tareas" />
           <div className="flex-1 flex flex-col gap-2 mt-1">
-            <div
-              className="flex justify-between text-[11px] p-2 rounded-md bg-white/5"
-              style={{ color: 'var(--bios-text-dim)' }}
-            >
+            <div className="flex justify-between text-[11px] p-2 rounded-md bg-white/5" style={{ color: 'var(--bios-text-dim)' }}>
               <span>Subir a Prod</span>
               <b style={{ color: 'var(--bios-danger)' }}>12:00</b>
             </div>
-            <div
-              className="flex justify-between text-[11px] p-2 rounded-md bg-white/5"
-              style={{ color: 'var(--bios-text-dim)' }}
-            >
+            <div className="flex justify-between text-[11px] p-2 rounded-md bg-white/5" style={{ color: 'var(--bios-text-dim)' }}>
               <span>Revisión</span>
               <b style={{ color: 'var(--bios-text)' }}>15:30</b>
             </div>
@@ -466,38 +489,31 @@ export function IslandsGrid() {
     setArmedId(null);
   };
 
-  // Verifica si el movimiento es legal visualmente (muestra cursor "bloqueado" si no cabe)
   const handleDragOver = (e: DragEvent, targetWidget: WidgetData) => {
     e.preventDefault();
-    
+
     if (targetWidget.type !== 'empty') {
       e.dataTransfer.dropEffect = 'none';
       return;
     }
 
-    const draggedWidget = widgets.find(w => w.id === draggedId);
+    const draggedWidget = widgets.find((w) => w.id === draggedId);
     if (!draggedWidget) return;
 
-    // Calculamos si el widget que arrastramos cabe en el destino
     const targetCol = targetWidget.col;
     const targetRow = targetWidget.row;
 
-    // 1. Validar que no se salga del grid por la derecha (4 columnas)
     if (targetCol + draggedWidget.colSpan - 1 > 4) {
       e.dataTransfer.dropEffect = 'none';
       return;
     }
 
-    // 2. Validar colisión matemática con otros widgets reales
-    const hasCollision = widgets.some(w => {
+    const hasCollision = widgets.some((w) => {
       if (w.id === draggedId || w.type === 'empty') return false;
-      
       const wRight = w.col + w.colSpan - 1;
       const wBottom = w.row + w.rowSpan - 1;
       const dropRight = targetCol + draggedWidget.colSpan - 1;
       const dropBottom = targetRow + draggedWidget.rowSpan - 1;
-
-      // Si intersectan en algún punto, hay colisión
       return !(w.col > dropRight || wRight < targetCol || w.row > dropBottom || wBottom < targetRow);
     });
 
@@ -516,16 +532,15 @@ export function IslandsGrid() {
       const targetWidget = prev.find((w) => w.id === targetId);
 
       if (!draggedWidget || !targetWidget || targetWidget.type !== 'empty') {
-        return prev; // Destino inválido
+        return prev;
       }
 
       const targetCol = targetWidget.col;
       const targetRow = targetWidget.row;
 
-      // Doble validación de colisión (misma lógica del dragOver por seguridad)
       if (targetCol + draggedWidget.colSpan - 1 > 4) return prev;
 
-      const hasCollision = prev.some(w => {
+      const hasCollision = prev.some((w) => {
         if (w.id === draggedId || w.type === 'empty') return false;
         const wRight = w.col + w.colSpan - 1;
         const wBottom = w.row + w.rowSpan - 1;
@@ -534,43 +549,60 @@ export function IslandsGrid() {
         return !(w.col > dropRight || wRight < targetCol || w.row > dropBottom || wBottom < targetRow);
       });
 
-      if (hasCollision) return prev; // El hueco no es lo suficientemente grande, abortamos
+      if (hasCollision) return prev;
 
-      // Actualizamos solo las coordenadas del widget movido
       const realWidgets = prev
-        .filter(w => w.type !== 'empty')
-        .map(w => w.id === draggedId ? { ...w, col: targetCol, row: targetRow } : w);
+        .filter((w) => w.type !== 'empty')
+        .map((w) => (w.id === draggedId ? { ...w, col: targetCol, row: targetRow } : w));
 
-      // Regeneramos los espacios vacíos limpiamente
       return generateGrid(realWidgets);
     });
-    
+
     setDraggedId(null);
   };
 
+  // Solo los widgets reales (sin los huecos fantasma), en el orden en que
+  // quedaron dispuestos en escritorio: fila arriba->abajo, columna izq->der.
+  const widgetsParaMovil = widgets
+    .filter((w) => w.type !== 'empty')
+    .sort((a, b) => a.row - b.row || a.col - b.col);
+
   return (
-    // IMPORTANTE: Fijamos las columnas a 4 para que las coordenadas funcionen perfecto.
-    <div className="grid grid-cols-4 gap-3 auto-rows-[130px] items-stretch min-w-[700px] overflow-x-auto">
-      {widgets.map((widget) => (
-        <Island
-          key={widget.id}
-          colSpan={widget.colSpan}
-          rowSpan={widget.rowSpan}
-          col={widget.col}
-          row={widget.row}
-          draggableEnabled={armedId === widget.id}
-          isDragging={draggedId === widget.id}
-          showHandle={widget.type !== 'empty'}
-          onHandleDown={() => setArmedId(widget.id)}
-          onDragStart={(e) => handleDragStart(e, widget.id)}
-          onDragEnd={handleDragEnd}
-          onDragOver={(e) => handleDragOver(e, widget)}
-          onDrop={(e) => handleDrop(e, widget.id)}
-        >
-          {renderWidgetContent(widget.type)}
-        </Island>
-      ))}
-    </div>
+    <>
+      {/* ============ ESCRITORIO / TABLET: grid arrastrable ============ */}
+      <div className="hidden md:grid grid-cols-4 gap-3 auto-rows-[130px] items-stretch min-w-[700px] overflow-x-auto">
+        {widgets.map((widget) => (
+          <Island
+            key={widget.id}
+            colSpan={widget.colSpan}
+            rowSpan={widget.rowSpan}
+            col={widget.col}
+            row={widget.row}
+            draggableEnabled={armedId === widget.id}
+            isDragging={draggedId === widget.id}
+            showHandle={widget.type !== 'empty'}
+            onHandleDown={() => setArmedId(widget.id)}
+            onDragStart={(e) => handleDragStart(e, widget.id)}
+            onDragEnd={handleDragEnd}
+            onDragOver={(e) => handleDragOver(e, widget)}
+            onDrop={(e) => handleDrop(e, widget.id)}
+          >
+            {renderWidgetContent(widget.type)}
+          </Island>
+        ))}
+      </div>
+
+      {/* ============ MÓVIL: lista apilada de solo lectura ============ */}
+      {/* Mismo estado `widgets`, sin drag, sin huecos fantasma, orden
+          heredado de la posición que tenían en escritorio (fila, columna). */}
+      <div className="flex md:hidden flex-col gap-3">
+        {widgetsParaMovil.map((widget) => (
+          <div key={widget.id} className="min-h-[130px]">
+            {renderWidgetContent(widget.type)}
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 ```
@@ -702,28 +734,214 @@ export function TopBar({ onMenuClick }: Props) {
 
 ```
 
+### `src\modules\finanzas\CuentasView.tsx`
+
+```tsx
+import { useState } from 'react';
+import CuentaWidget, { type CuentaData } from './widgets/CuentaWidget';
+import { Modal } from '../../shared/components/Modal';
+import { IconPlus, IconTrash } from '../../shared/icons';
+import { ColorPicker, ImageLogoInput, ToggleCard } from '../../shared/components/FormControls';
+
+export function CuentasView() {
+  // Estado de las cuentas
+  const [cuentas, setCuentas] = useState<CuentaData[]>([
+    { id: 1, nombre: 'Billetera', saldoActual: 150000, saldoPrevisto: 85000, color: '#3498db' }
+  ]);
+
+  // Estados del Modal
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [nuevoNombre, setNuevoNombre] = useState('');
+  const [nuevoSaldo, setNuevoSaldo] = useState('');
+  const [nuevoLogo, setNuevoLogo] = useState('');
+  const [nuevoColor, setNuevoColor] = useState('#3498db');
+  const [incluirDashboard, setIncluirDashboard] = useState(true);
+
+  function handleGuardarCuenta() {
+    if (!nuevoNombre.trim()) return alert('El nombre es obligatorio');
+
+    const saldoParsed = parseFloat(nuevoSaldo) || 0;
+    const nuevaCuenta: CuentaData = {
+      id: Date.now(),
+      nombre: nuevoNombre,
+      saldoActual: saldoParsed,
+      saldoPrevisto: saldoParsed,
+      color: nuevoColor,
+      logo: nuevoLogo,
+    };
+
+    setCuentas([...cuentas, nuevaCuenta]);
+    limpiarYCerrar();
+  }
+
+  function limpiarYCerrar() {
+    setNuevoNombre('');
+    setNuevoSaldo('');
+    setNuevoLogo('');
+    setNuevoColor('#3498db');
+    setIncluirDashboard(true);
+    setModalAbierto(false);
+  }
+
+  // Ancho dinámico del input de saldo: crece en 'ch' con la cantidad de
+  // dígitos escritos, así el $ y el número siempre quedan pegados como un
+  // solo bloque centrado, sin importar qué tan grande sea la cifra.
+  const anchoSaldoCh = Math.max((nuevoSaldo || '0.00').length + 1, 5);
+
+  return (
+    <div className="mt-6">
+      {/* Grilla de Widgets de Cuentas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        
+        {/* Botón para abrir el Modal de Nueva Cuenta */}
+        <button 
+          onClick={() => setModalAbierto(true)}
+          className="rounded-[11px] border-2 border-dashed flex flex-col items-center justify-center gap-2 min-h-[160px] transition-colors hover:bg-white/5"
+          style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text-dim)' }}
+        >
+          <div className="w-10 h-10 rounded-full border flex items-center justify-center" style={{ borderColor: 'var(--bios-border)' }}>
+            <IconPlus size={20} />
+          </div>
+          <span className="text-[13px] font-medium">Nueva cuenta</span>
+        </button>
+
+        {/* Listado dinámico de cuentas */}
+        {cuentas.map(cuenta => (
+          <div 
+            key={cuenta.id} 
+            className="rounded-[11px] border p-3 flex flex-col min-h-[160px]"
+            style={{
+              background: 'linear-gradient(160deg, var(--bios-card-a), var(--bios-card-b))',
+              borderColor: 'var(--bios-border)',
+            }}
+          >
+            <CuentaWidget cuenta={cuenta} />
+          </div>
+        ))}
+      </div>
+
+      {/* Modal de Añadir Cuenta con Pie Personalizado */}
+      <Modal
+        open={modalAbierto}
+        title="Añadir cuenta"
+        onCancel={limpiarYCerrar}
+        hideDefaultFooter
+      >
+        <div className="flex flex-col mt-2">
+          
+          {/* Campo de Saldo Gigante — $ y número como un solo bloque flex
+              centrado, en vez de $ absoluto + número centrado por separado
+              (eso era lo que causaba el choque con números grandes). */}
+          <div className="flex flex-col items-center justify-center mb-6 mt-2">
+            <div className="flex items-center justify-center gap-1">
+              <span className="text-[24px] font-display font-bold flex-shrink-0" style={{ color: 'var(--bios-text-dim)' }}>$</span>
+              <input
+                type="number"
+                value={nuevoSaldo}
+                onChange={(e) => setNuevoSaldo(e.target.value)}
+                placeholder="0.00"
+                className="bg-transparent text-[38px] font-display font-bold outline-none text-left min-w-0"
+                style={{ color: 'var(--bios-text)', width: `${anchoSaldoCh}ch` }}
+              />
+            </div>
+            <div className="w-full max-w-[220px] h-px mt-1 border-b border-dashed mx-auto" style={{ borderColor: 'var(--bios-border)' }} />
+          </div>
+
+          {/* Nombre de la institución financiera */}
+          <div className="flex flex-col gap-1.5 mb-4">
+            <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>Nombre de la institución financiera</label>
+            <input 
+              type="text" 
+              value={nuevoNombre}
+              onChange={(e) => setNuevoNombre(e.target.value)}
+              placeholder="Ej. Bancolombia, Efectivo..." 
+              className="w-full bg-black/20 border rounded-[10px] px-3 py-2.5 text-[13px] outline-none transition-colors"
+              style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text)' }}
+            />
+          </div>
+
+          {/* Logo y Color — apilados verticalmente (antes iban lado a lado
+              en 2 columnas dentro de un modal de solo 420px, y se
+              apretaban/desbordaban entre sí). */}
+          <div className="flex flex-col gap-4 mb-5">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>URL del Logo institucional</label>
+              <ImageLogoInput url={nuevoLogo} onChange={setNuevoLogo} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>Color distintivo</label>
+              <ColorPicker value={nuevoColor} onChange={setNuevoColor} />
+            </div>
+          </div>
+
+          {/* Toggle de Dashboard */}
+          <div className="mb-6">
+            <ToggleCard 
+              label="Incluir en la suma del dashboard" 
+              description="El saldo acumulado se sumará al patrimonio total visible."
+              checked={incluirDashboard}
+              onChange={setIncluirDashboard} 
+            />
+          </div>
+
+          {/* Pie de página con botones personalizados */}
+          <div className="flex justify-between items-center pt-4 border-t" style={{ borderColor: 'var(--bios-border)' }}>
+            <button 
+              onClick={() => { setNuevoNombre(''); setNuevoSaldo(''); setNuevoLogo(''); setNuevoColor('#3498db'); }}
+              className="flex items-center gap-1.5 text-[11px] px-3 py-2 rounded-lg transition-colors hover:bg-white/5"
+              style={{ color: 'var(--bios-text-dim)' }}
+            >
+              <IconTrash size={14} /> Limpiar campos
+            </button>
+
+            <button 
+              onClick={handleGuardarCuenta}
+              className="text-[12px] font-semibold px-4 py-2 rounded-lg transition-opacity hover:opacity-90"
+              style={{ 
+                background: 'var(--bios-accent)', 
+                color: '#0a1120'
+              }}
+            >
+              Guardar cuenta
+            </button>
+          </div>
+
+        </div>
+      </Modal>
+
+    </div>
+  );
+}
+```
+
 ### `src\modules\finanzas\FinanzasModule.tsx`
 
 ```tsx
 import { useState } from 'react';
 import { FinanzasNav } from './FinanzasNav';
+import { CuentasView } from './CuentasView';
 
 export function FinanzasModule() {
-  const [tab, setTab] = useState('resumen');
+  const [tab, setTab] = useState('cuentas'); // Puse 'cuentas' por defecto para que lo veas de una
 
   return (
     <div className="pb-10">
       <div className="max-w-[1180px] mx-auto px-5 pt-4">
         <h1 className="font-display font-bold text-[15px] mb-3">Finanzas</h1>
         <FinanzasNav active={tab} onChange={setTab} />
-        <div className="py-10 text-center font-mono text-[11px]" style={{ color: 'var(--bios-text-faint)' }}>
-          — contenido de "{tab}" —
-        </div>
+        
+        {/* Enrutador interno del módulo */}
+        {tab === 'cuentas' ? (
+          <CuentasView />
+        ) : (
+          <div className="py-10 text-center font-mono text-[11px]" style={{ color: 'var(--bios-text-faint)' }}>
+            — contenido de "{tab}" en construcción —
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
 ```
 
 ### `src\modules\finanzas\FinanzasNav.tsx`
@@ -770,6 +988,214 @@ interface Props {
 
 export function FinanzasNav({ active, onChange }: Props) {
   return <ModuleNav items={TABS} moreItems={MORE_TABS} activeId={active} onChange={onChange} />;
+}
+```
+
+### `src\modules\finanzas\widgets\CuentaWidget.tsx`
+
+```tsx
+import { IconDots, IconPlus, IconBank, IconPieChart } from '../../../shared/icons';
+
+// Ahora el widget recibe la información completa de la cuenta
+export interface CuentaData {
+  id: number;
+  nombre: string;
+  saldoActual: number;
+  saldoPrevisto: number;
+  color: string;
+  logo?: string;
+}
+
+interface Props {
+  cuenta: CuentaData;
+}
+
+const formatearDinero = (monto: number) => {
+  return new Intl.NumberFormat('es-CO', { 
+    style: 'currency', 
+    currency: 'COP', 
+    minimumFractionDigits: 0 
+  }).format(monto);
+};
+
+export default function CuentaWidget({ cuenta }: Props) {
+  const colorActual = cuenta.saldoActual >= 0 ? 'var(--bios-ok)' : 'var(--bios-danger)';
+  const colorPrevisto = cuenta.saldoPrevisto >= 0 ? 'var(--bios-ok)' : 'var(--bios-danger)';
+
+  return (
+    <div className="flex flex-col h-full w-full justify-between">
+      {/* Cabecera */}
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2.5">
+          {cuenta.logo ? (
+            <img src={cuenta.logo} alt="logo" className="w-[30px] h-[30px] rounded-[8px] object-cover" />
+          ) : (
+            <div 
+              className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center text-white"
+              style={{ background: cuenta.color }}
+            >
+              <IconBank size={16} />
+            </div>
+          )}
+          <span className="font-semibold text-[13px] text-[var(--bios-text)]">
+            {cuenta.nombre}
+          </span>
+        </div>
+        <button className="text-[var(--bios-text-faint)] hover:text-[var(--bios-text)] transition-colors">
+          <IconDots size={16} />
+        </button>
+      </div>
+
+      {/* Cuerpo: Saldos */}
+      <div className="flex-1 flex flex-col gap-2">
+        <div className="flex justify-between items-end">
+          <span className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>Saldo actual</span>
+          <span className="font-display font-bold text-[16px]" style={{ color: colorActual }}>
+            {formatearDinero(cuenta.saldoActual)}
+          </span>
+        </div>
+        <div className="flex justify-between items-end">
+          <span className="text-[11px] flex items-center gap-1" style={{ color: 'var(--bios-text-dim)' }}>
+            Saldo previsto <IconPieChart size={10} style={{ opacity: 0.6 }} />
+          </span>
+          <span className="font-display font-medium text-[13px]" style={{ color: colorPrevisto }}>
+            {formatearDinero(cuenta.saldoPrevisto)}
+          </span>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="mt-3 pt-3 border-t" style={{ borderColor: 'var(--bios-border)' }}>
+        <button 
+          className="w-full py-1.5 flex items-center justify-center gap-1.5 rounded-lg text-[10.5px] font-semibold transition-colors hover:bg-white/5"
+          style={{ 
+            color: 'var(--bios-text-dim)',
+            border: '1px solid var(--bios-border)'
+          }}
+        >
+          <IconPlus size={12} />
+          AÑADIR GASTO
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+### `src\shared\components\FormControls.tsx`
+
+```tsx
+import { IconBank, IconPlus } from '../icons';
+
+// ==========================================
+// 1. Selector de Imagen / Logo
+// ==========================================
+interface ImageLogoInputProps {
+  url: string;
+  onChange: (url: string) => void;
+}
+
+export function ImageLogoInput({ url, onChange }: ImageLogoInputProps) {
+  return (
+    <div className="flex gap-2">
+      <div 
+        className="w-[38px] h-[38px] rounded-[10px] border flex-shrink-0 flex items-center justify-center overflow-hidden bg-black/20"
+        style={{ borderColor: 'var(--bios-border)' }}
+      >
+        {url ? (
+          <img src={url} alt="preview" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = 'none')} />
+        ) : (
+          <IconBank size={20} style={{ color: 'var(--bios-text-faint)' }} />
+        )}
+      </div>
+      <input
+        type="url"
+        placeholder="URL de la imagen..."
+        value={url}
+        onChange={(e) => onChange(e.target.value)}
+        className="flex-1 bg-black/20 border rounded-[10px] px-3 py-2 text-[13px] outline-none transition-colors"
+        style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text)' }}
+      />
+    </div>
+  );
+}
+
+// ==========================================
+// 2. Selector de Color Distintivo
+// ==========================================
+interface ColorPickerProps {
+  value: string;
+  onChange: (color: string) => void;
+}
+
+const PRESET_COLORS = ['#e74c3c', '#2ecc71', '#f1c40f', '#3498db', '#9b59b6'];
+
+export function ColorPicker({ value, onChange }: ColorPickerProps) {
+  return (
+    <div className="flex items-center gap-2 h-[38px]">
+      {PRESET_COLORS.map(c => (
+        <button
+          key={c}
+          type="button"
+          onClick={() => onChange(c)}
+          className="w-[26px] h-[26px] rounded-full transition-transform hover:scale-110 flex items-center justify-center"
+          style={{ 
+            backgroundColor: c,
+            boxShadow: value === c ? '0 0 0 2px var(--bios-card-a), 0 0 0 4px ' + c : 'none'
+          }}
+        />
+      ))}
+      {/* Selector Personalizado */}
+      <label 
+        className="relative w-[26px] h-[26px] rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110"
+        style={{ 
+          background: 'conic-gradient(red, yellow, lime, aqua, blue, magenta, red)',
+          boxShadow: !PRESET_COLORS.includes(value) && value ? '0 0 0 2px var(--bios-card-a), 0 0 0 4px ' + value : 'none'
+        }}
+      >
+        <IconPlus size={14} color="white" style={{ mixBlendMode: 'difference' }} />
+        <input 
+          type="color" 
+          value={value || '#ffffff'}
+          onChange={(e) => onChange(e.target.value)}
+          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+        />
+      </label>
+    </div>
+  );
+}
+
+// ==========================================
+// 3. Tarjeta tipo Toggle (Switch)
+// ==========================================
+interface ToggleCardProps {
+  label: string;
+  description: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}
+
+export function ToggleCard({ label, description, checked, onChange }: ToggleCardProps) {
+  return (
+    <label 
+      className="flex items-center justify-between p-3.5 rounded-[12px] border cursor-pointer transition-colors hover:bg-white/5"
+      style={{ borderColor: 'var(--bios-border)', background: 'rgba(0,0,0,0.1)' }}
+    >
+      <div className="flex flex-col gap-0.5">
+        <span className="text-[12.5px] font-semibold" style={{ color: 'var(--bios-text)' }}>{label}</span>
+        <span className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>{description}</span>
+      </div>
+      
+      {/* Switch visual CSS puro */}
+      <div className="relative">
+        <input type="checkbox" className="peer sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+        <div 
+          className="w-10 h-5 bg-black/40 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all"
+          style={{ backgroundColor: checked ? 'var(--bios-accent)' : 'rgba(255,255,255,0.1)' }}
+        ></div>
+      </div>
+    </label>
+  );
 }
 ```
 
@@ -890,6 +1316,7 @@ interface ModalProps {
   danger?: boolean;
   onConfirm?: () => void;
   onCancel: () => void;
+  hideDefaultFooter?: boolean; // <-- NUEVO: Para ocultar el pie por defecto y usar uno personalizado
 }
 
 /**
@@ -907,54 +1334,68 @@ export function Modal({
   danger = false,
   onConfirm,
   onCancel,
+  hideDefaultFooter = false, // <-- NUEVO: Por defecto es falso para no alterar los otros modales
 }: ModalProps) {
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div
-        className="w-[280px] rounded-[14px] p-[18px] border"
+        className="w-full max-w-[420px] rounded-[14px] p-[22px] border"
         style={{
           background: 'linear-gradient(160deg, var(--bios-card-a), var(--bios-card-b))',
           borderColor: 'var(--bios-border)',
           boxShadow: '0 30px 60px rgba(0,0,0,0.5)',
         }}
       >
-        <h3 className="font-display text-[13px] mb-1.5">{title}</h3>
+        <div className="flex items-center justify-between mb-1.5">
+          <h3 className="font-display text-[14px] font-bold">{title}</h3>
+          <button 
+            onClick={onCancel}
+            className="text-[var(--bios-text-faint)] hover:text-[var(--bios-text)] text-sm px-1.5 py-0.5 rounded-md hover:bg-white/5"
+          >
+            ✕
+          </button>
+        </div>
+
         {description && (
           <p className="text-[11.5px] leading-relaxed mb-4" style={{ color: 'var(--bios-text-dim)' }}>
             {description}
           </p>
         )}
+
         {children}
-        <div className="flex gap-2 justify-end mt-4">
-          <button
-            onClick={onCancel}
-            className="text-[11px] px-3 py-1.5 rounded-lg border transition-colors"
-            style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text-dim)' }}
-          >
-            {cancelLabel}
-          </button>
-          {onConfirm && (
+
+        {/* Si hideDefaultFooter es true, no muestra estos botones estándar y deja que el children ponga los suyos */}
+        {!hideDefaultFooter && (
+          <div className="flex gap-2 justify-end mt-4">
             <button
-              onClick={onConfirm}
-              className="text-[11px] px-3 py-1.5 rounded-lg font-semibold"
-              style={{
-                background: danger
-                  ? 'linear-gradient(90deg, var(--bios-danger), #ff8f6b)'
-                  : 'linear-gradient(90deg, var(--bios-accent), var(--bios-accent-2))',
-                color: '#0a1120',
-              }}
+              onClick={onCancel}
+              className="text-[11px] px-3 py-1.5 rounded-lg border transition-colors"
+              style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text-dim)' }}
             >
-              {confirmLabel}
+              {cancelLabel}
             </button>
-          )}
-        </div>
+            {onConfirm && (
+              <button
+                onClick={onConfirm}
+                className="text-[11px] px-3 py-1.5 rounded-lg font-semibold"
+                style={{
+                  background: danger
+                    ? 'linear-gradient(90deg, var(--bios-danger), #ff8f6b)'
+                    : 'linear-gradient(90deg, var(--bios-accent), var(--bios-accent-2))',
+                  color: '#0a1120',
+                }}
+              >
+                {confirmLabel}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
 ```
 
 ### `src\shared\components\ModuleNav.tsx`
@@ -1254,13 +1695,10 @@ import {
   IconBuildingStore,
   IconCalendar,
   IconStar,
+  IconTrash, // <-- Importado de Tabler
 } from '@tabler/icons-react';
 
-// Re-exportamos con los MISMOS nombres que ya usa el resto de la app
-// (Sidebar.tsx, MobileDrawer.tsx, TopBar.tsx, FinanzasNav.tsx, etc.)
-// para no tener que tocar ningún otro archivo. Solo cambia la
-// implementación interna: ahora son iconos de Tabler en vez de SVGs
-// dibujados a mano.
+// Re-exportamos con los mismos nombres que usa la app
 export {
   IconHome,
   IconPlus,
@@ -1274,12 +1712,12 @@ export {
   IconChartPie as IconPieChart,
   IconReportAnalytics as IconReport,
   IconDots,
-  // Nuevos, usados en el menú "Más" de Finanzas (y reutilizables en otros módulos)
   IconTarget,
   IconTags,
   IconBuildingStore,
   IconCalendar,
   IconStar,
+  IconTrash, // <-- Re-exportado para toda la app
 };
 ```
 
@@ -1302,5 +1740,505 @@ export const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: IconHome },
   { id: 'finanzas', label: 'Finanzas', icon: IconBank },
 ];
+```
+
+### `src\shared\widgetRegistry.ts`
+
+```tsx
+import { lazy } from 'react';
+
+export type WidgetContext = 'dashboard-main' | 'finanzas-resumen' | 'finanzas-cuentas';
+
+export interface WidgetDefinition {
+  id: string; // El ID del "molde"
+  moduleId: string;
+  allowedContexts: WidgetContext[];
+  defaultColSpan: 1 | 2;
+  defaultRowSpan: 1 | 2;
+  component: React.ComponentType<any>;
+}
+
+const CuentaWidget = lazy(() => import('../modules/finanzas/widgets/CuentaWidget'));
+
+export const WIDGET_REGISTRY: WidgetDefinition[] = [
+  {
+    id: 'finanzas-cuenta', // Este es el molde para TODAS las cuentas
+    moduleId: 'finanzas',
+    allowedContexts: ['dashboard-main', 'finanzas-resumen', 'finanzas-cuentas'],
+    defaultColSpan: 1,
+    defaultRowSpan: 1,
+    component: CuentaWidget,
+  }
+];
+```
+
+### `src\core\auth\AuthGate.tsx`
+
+```tsx
+import { useState, type FormEvent, type ReactNode } from 'react';
+import { authService } from './authService';
+
+interface AuthGateProps {
+  children: ReactNode;
+}
+
+interface LoginProps {
+  onSuccess: () => void;
+}
+
+export function AuthGate({ children }: AuthGateProps) {
+  const [authenticated, setAuthenticated] = useState(authService.isAuthenticated());
+
+  if (!authenticated) {
+    return <Login onSuccess={() => setAuthenticated(true)} />;
+  }
+
+  return <>{children}</>;
+}
+
+function Login({ onSuccess }: LoginProps) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(false);
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (authService.verifyPassword(password)) {
+      authService.setAuthenticated(true);
+      onSuccess();
+      return;
+    }
+
+    setError(true);
+    setPassword('');
+  }
+
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '100vh',
+      backgroundColor: '#0f172a',
+      color: '#fff',
+      fontFamily: 'sans-serif',
+    }}>
+      <form onSubmit={handleSubmit} style={{
+        background: '#1e293b',
+        padding: '2.5rem',
+        borderRadius: '1rem',
+        boxShadow: '0 10px 25px rgba(0,0,0,0.3)',
+        width: '100%',
+        maxWidth: '400px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1rem',
+      }}>
+        <h2 style={{ textAlign: 'center', margin: '0 0 1rem 0' }}>Acceso Protegido</h2>
+
+        <label style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
+          Contraseña Maestra
+          <input
+            type="password"
+            value={password}
+            onChange={(event) => {
+              setPassword(event.target.value);
+              setError(false);
+            }}
+            placeholder="Ingresa tu contraseña"
+            autoFocus
+            style={{
+              display: 'block',
+              width: '100%',
+              boxSizing: 'border-box',
+              marginTop: '0.5rem',
+              padding: '0.75rem',
+              borderRadius: '0.5rem',
+              border: error ? '1px solid #ef4444' : '1px solid #334155',
+              background: '#0f172a',
+              color: '#fff',
+              fontSize: '1rem',
+              outline: 'none',
+            }}
+          />
+        </label>
+
+        {error && (
+          <span style={{ color: '#ef4444', fontSize: '0.85rem', textAlign: 'center' }}>
+            Contraseña incorrecta
+          </span>
+        )}
+
+        <button type="submit" style={{
+          padding: '0.75rem',
+          borderRadius: '0.5rem',
+          border: 'none',
+          background: '#3b82f6',
+          color: '#fff',
+          fontWeight: 'bold',
+          fontSize: '1rem',
+          cursor: 'pointer',
+          marginTop: '0.5rem',
+        }}>
+          Entrar
+        </button>
+      </form>
+    </div>
+  );
+}
+
+```
+
+### `src\core\auth\authService.ts`
+
+```tsx
+import { supabase } from '../supabaseClient';
+
+export async function iniciarSesion(email: string, password: string) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+}
+
+// Mismo nombre que ya usaba tu TopBar.tsx — no hace falta tocar ese archivo.
+export async function clearSession() {
+  await supabase.auth.signOut();
+}
+
+export async function haySesionActiva(): Promise<boolean> {
+  const { data } = await supabase.auth.getSession();
+  return !!data.session;
+}
+```
+
+### `src\core\auth\Login.tsx`
+
+```tsx
+// src/core/auth/authService.ts
+
+export const authService = {
+  verifyPassword(password: string): boolean {
+    const masterPassword = import.meta.env.VITE_MASTER_PASSWORD || '123456';
+    return password === masterPassword;
+  },
+
+  isAuthenticated(): boolean {
+    return sessionStorage.getItem('bios_authenticated') === 'true';
+  },
+
+  setAuthenticated(status: boolean) {
+    if (status) {
+      sessionStorage.setItem('bios_authenticated', 'true');
+    } else {
+      sessionStorage.removeItem('bios_authenticated');
+    }
+  }
+};
+
+// --- Funciones de compatibilidad para que Login.tsx no falle ---
+export function isSessionAuthenticated(): boolean {
+  return sessionStorage.getItem('bios_authenticated') === 'true';
+}
+
+export function markSessionAuthenticated(): void {
+  sessionStorage.setItem('bios_authenticated', 'true');
+}
+
+export async function hasPassword(): Promise<boolean> {
+  return true;
+}
+```
+
+### `src\core\auth\LoginGate.tsx`
+
+```tsx
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { supabase } from '../supabaseClient';
+
+/**
+ * Envuelve TODA la app. Mientras no haya una sesión de Supabase Auth activa,
+ * muestra el formulario de login y no renderiza `children` — así ninguna
+ * pantalla ni petición a la base de datos ocurre antes de autenticarse.
+ *
+ * Uso en main.tsx:
+ *   <LoginGate>
+ *     <App />
+ *   </LoginGate>
+ */
+export function LoginGate({ children }: { children: ReactNode }) {
+  const [cargando, setCargando] = useState(true);
+  const [autenticado, setAutenticado] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [enviando, setEnviando] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setAutenticado(!!data.session);
+      setCargando(false);
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAutenticado(!!session);
+    });
+
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  async function handleLogin(e: FormEvent) {
+    e.preventDefault();
+    setError('');
+    setEnviando(true);
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setEnviando(false);
+    if (error) setError('Correo o contraseña incorrectos.');
+  }
+
+  if (cargando) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ color: 'var(--bios-text-dim)' }}>
+        Cargando...
+      </div>
+    );
+  }
+
+  if (!autenticado) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-5">
+        <form
+          onSubmit={handleLogin}
+          className="w-full max-w-[320px] rounded-[16px] border p-6 flex flex-col gap-3"
+          style={{
+            background: 'linear-gradient(160deg, var(--bios-card-a), var(--bios-card-b))',
+            borderColor: 'var(--bios-border)',
+          }}
+        >
+          <div
+            className="w-9 h-9 rounded-full mx-auto mb-1"
+            style={{
+              background:
+                'radial-gradient(circle at 35% 30%, #cdeeff, var(--bios-accent) 45%, var(--bios-accent-2) 90%)',
+              boxShadow: '0 0 14px var(--bios-accent-glow)',
+            }}
+          />
+          <h1 className="text-center font-display font-bold text-[15px] mb-1">BIOS</h1>
+
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Correo"
+            autoComplete="username"
+            className="px-3 py-2.5 rounded-lg border text-[13px] bg-black/20 outline-none"
+            style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text)' }}
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Contraseña"
+            autoComplete="current-password"
+            className="px-3 py-2.5 rounded-lg border text-[13px] bg-black/20 outline-none"
+            style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text)' }}
+          />
+
+          {error && (
+            <p className="text-[11.5px]" style={{ color: 'var(--bios-danger)' }}>
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
+            disabled={enviando}
+            className="mt-1 py-2.5 rounded-lg text-[13px] font-semibold disabled:opacity-50"
+            style={{ background: 'var(--bios-accent)', color: '#0a1120' }}
+          >
+            {enviando ? 'Entrando...' : 'Entrar'}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+```
+
+### `src\core\auth\SetupPassword.tsx`
+
+```tsx
+import { useState, type FormEvent } from 'react';
+import { setPassword } from './authService';
+
+interface Props {
+  onDone: () => void;
+}
+
+export function SetupPassword({ onDone }: Props) {
+  const [password, setPasswordValue] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (password.length < 4) {
+      setError('La contraseña debe tener al menos 4 caracteres.');
+      return;
+    }
+    if (password !== confirm) {
+      setError('Las contraseñas no coinciden.');
+      return;
+    }
+
+    await setPassword(password);
+    onDone();
+  }
+
+  return (
+    <div className="fixed inset-0 z-10 flex items-center justify-center px-5">
+      <form
+        onSubmit={handleSubmit}
+        className="w-[280px] rounded-[14px] p-5 border text-left"
+        style={{
+          background: 'linear-gradient(160deg, var(--bios-card-a), var(--bios-card-b))',
+          borderColor: 'var(--bios-border)',
+        }}
+      >
+        <h1 className="font-display font-bold text-[20px] tracking-[3px] mb-1">BIOS</h1>
+        <p className="text-[11.5px] mb-5" style={{ color: 'var(--bios-text-dim)' }}>
+          Primera vez aquí. Crea tu contraseña de acceso.
+        </p>
+
+        <label className="block text-[11px] mb-1" style={{ color: 'var(--bios-text-dim)' }}>
+          Nueva contraseña
+        </label>
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPasswordValue(e.target.value)}
+          className="w-full bg-white/5 border rounded-lg px-2.5 py-2 text-[12px] mb-3 outline-none focus:ring-2"
+          style={{ borderColor: 'var(--bios-border)' }}
+          autoFocus
+        />
+
+        <label className="block text-[11px] mb-1" style={{ color: 'var(--bios-text-dim)' }}>
+          Confirmar contraseña
+        </label>
+        <input
+          type="password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          className="w-full bg-white/5 border rounded-lg px-2.5 py-2 text-[12px] mb-1 outline-none focus:ring-2"
+          style={{ borderColor: 'var(--bios-border)' }}
+        />
+
+        {error && (
+          <p className="text-[10.5px] mt-2" style={{ color: 'var(--bios-danger)' }}>
+            {error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          className="w-full mt-4 py-2 rounded-lg font-semibold text-[12px]"
+          style={{
+            background: 'linear-gradient(90deg, var(--bios-accent), var(--bios-accent-2))',
+            color: '#0a1120',
+          }}
+        >
+          Crear contraseña y entrar
+        </button>
+      </form>
+    </div>
+  );
+}
+
+```
+
+### `src\core\db\db.ts`
+
+```tsx
+import { supabase } from './supabase';
+
+export interface Cuenta {
+  id?: string;
+  nombre: string;
+  saldo_inicial: number;
+  tipo: string;
+  color?: string;
+  logo?: string;
+  incluir_dashboard?: boolean;
+}
+
+/**
+ * Obtener todas las cuentas desde Supabase
+ */
+export async function getCuentas(): Promise<Cuenta[]> {
+  const { data, error } = await supabase
+    .from('cuentas')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error al obtener cuentas:', error.message);
+    return [];
+  }
+
+  return data || [];
+}
+
+/**
+ * Guardar/Crear una nueva cuenta en Supabase
+ */
+export async function crearCuenta(cuenta: Omit<Cuenta, 'id'>): Promise<Cuenta | null> {
+  const { data, error } = await supabase
+    .from('cuentas')
+    .insert([cuenta])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error al crear cuenta:', error.message);
+    throw new Error(error.message);
+  }
+
+  return data;
+}
+
+/**
+ * Eliminar una cuenta de Supabase
+ */
+export async function eliminarCuenta(id: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('cuentas')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error al eliminar cuenta:', error.message);
+    return false;
+  }
+
+  return true;
+}
+```
+
+### `src\core\db\supabase.ts`
+
+```tsx
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Faltan las variables de entorno de Supabase. Revisa tu archivo .env.local')
+}
+
+// Este es el cliente oficial que usaremos en toda la app para guardar y leer datos
+export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 ```
 
