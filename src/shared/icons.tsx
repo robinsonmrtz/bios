@@ -1,0 +1,42 @@
+import {
+  IconHome,
+  IconPlus,
+  IconMenu2,
+  IconBell,
+  IconGripVertical,
+  IconLayoutDashboard,
+  IconBuildingBank,
+  IconArrowsRightLeft,
+  IconCreditCard,
+  IconChartPie,
+  IconReportAnalytics,
+  IconDots,
+  IconTarget,
+  IconTags,
+  IconBuildingStore,
+  IconCalendar,
+  IconStar,
+  IconTrash, // <-- Importado de Tabler
+} from '@tabler/icons-react';
+
+// Re-exportamos con los mismos nombres que usa la app
+export {
+  IconHome,
+  IconPlus,
+  IconMenu2 as IconMenu,
+  IconBell,
+  IconGripVertical as IconGrip,
+  IconLayoutDashboard as IconGrid,
+  IconBuildingBank as IconBank,
+  IconArrowsRightLeft as IconSwap,
+  IconCreditCard as IconCard,
+  IconChartPie as IconPieChart,
+  IconReportAnalytics as IconReport,
+  IconDots,
+  IconTarget,
+  IconTags,
+  IconBuildingStore,
+  IconCalendar,
+  IconStar,
+  IconTrash, // <-- Re-exportado para toda la app
+};
