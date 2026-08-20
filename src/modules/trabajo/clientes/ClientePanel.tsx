@@ -26,6 +26,7 @@ import type {
   ColumnaOrdenVideo,
   DireccionOrden
 } from '../types/trabajo.types';
+import { ModalVideo } from './modals/ModalVideo';
 
 interface Props {
   clienteId: string;
@@ -40,6 +41,10 @@ export function ClientePanel({ clienteId, onBack }: Props) {
   const [videos, setVideos] = useState<VideoTrabajo[]>([]);
   const [pagos, setPagos] = useState<PagoTrabajo[]>([]);
   const [cargando, setCargando] = useState(true);
+
+  // Estados del Modal de Video
+  const [modalVideoOpen, setModalVideoOpen] = useState(false);
+  const [videoAEditar, setVideoAEditar] = useState<VideoTrabajo | null>(null);
 
   // Filtros y Orden de la Tabla
   const [filtroTexto, setFiltroTexto] = useState('');
@@ -78,7 +83,7 @@ export function ClientePanel({ clienteId, onBack }: Props) {
     cargarDatosProyecto();
   }, [proyectoActivoId]);
 
-  // 3. Calcular KPIs del Panel (Basado en el proyecto activo)
+  // 3. Calcular KPIs del Panel (Basado en el proyecto activo - Corregido Zona Horaria)
   const kpis = useMemo(() => {
     let ingMes = 0;
     let totalPagado = 0;
@@ -96,10 +101,19 @@ export function ClientePanel({ clienteId, onBack }: Props) {
       if (v.estado === 'listo') {
         entregados++;
         totalConsumido += cobrado;
-        const fechaRev = v.fecha_entrega || v.fecha_pago || v.fecha_recibido || v.ultima_edicion;
-        if (fechaRev) {
-          const d = new Date(fechaRev);
-          if (d.getMonth() === mesActual && d.getFullYear() === anoActual) ingMes += cobrado;
+        
+        // Prioridad: fecha_entrega y extraemos el mes con split para no desfasar días por el UTC
+        const fechaRef = v.fecha_entrega || v.fecha_subido || v.fecha_pago || v.ultima_edicion;
+        if (fechaRef) {
+          const partes = fechaRef.split('T')[0].split('-');
+          if (partes.length >= 3) {
+            const anoVal = parseInt(partes[0], 10);
+            const mesVal = parseInt(partes[1], 10) - 1; // 0-indexed para JS
+            
+            if (mesVal === mesActual && anoVal === anoActual) {
+              ingMes += cobrado;
+            }
+          }
         }
       } else {
         pendientes++;
@@ -203,7 +217,11 @@ export function ClientePanel({ clienteId, onBack }: Props) {
             <button className="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-[11px] font-semibold transition-colors hover:bg-white/5" style={{ borderColor: 'var(--bios-ok)', color: 'var(--bios-ok)' }}>
               <IconCash size={14} /> Adelanto
             </button>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-opacity hover:opacity-90" style={{ background: 'var(--bios-accent)', color: '#0a1120' }}>
+            <button 
+              onClick={() => { setVideoAEditar(null); setModalVideoOpen(true); }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-opacity hover:opacity-90" 
+              style={{ background: 'var(--bios-accent)', color: '#0a1120' }}
+            >
               <IconPlus size={14} /> Video
             </button>
           </div>
@@ -311,7 +329,7 @@ export function ClientePanel({ clienteId, onBack }: Props) {
                       <div className="flex gap-1 justify-end">
                         <BtnIcon icon={IconChartBar} title="Métricas" />
                         <BtnIcon icon={IconExternalLink} title="Abrir" />
-                        <BtnIcon icon={IconPencil} title="Editar" color="var(--bios-accent)" />
+                        <BtnIcon icon={IconPencil} title="Editar" color="var(--bios-accent)" onClick={() => { setVideoAEditar(v); setModalVideoOpen(true); }} />
                         <BtnIcon icon={IconTrash} title="Eliminar" color="var(--bios-danger)" onClick={() => handleEliminarVideo(v.id)} />
                       </div>
                     </td>
@@ -322,6 +340,18 @@ export function ClientePanel({ clienteId, onBack }: Props) {
           </tbody>
         </table>
       </div>
+
+      {/* MODAL DE VIDEO */}
+      {proyectoActivoId && (
+        <ModalVideo 
+          open={modalVideoOpen} 
+          onClose={() => setModalVideoOpen(false)}
+          onSaved={cargarDatosProyecto}
+          clienteId={clienteId}
+          proyectoId={proyectoActivoId}
+          videoAEditar={videoAEditar}
+        />
+      )}
     </div>
   );
 }

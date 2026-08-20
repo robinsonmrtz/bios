@@ -234,3 +234,24 @@ export async function eliminarPago(id: string): Promise<boolean> {
 
   return !error;
 }
+
+export async function createVideo(video: Partial<VideoTrabajo>) {
+  const { data, error } = await supabase
+    .from('trabajo_videos')
+    .insert([video])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateVideo(id: string, video: Partial<VideoTrabajo>) {
+  const { data, error } = await supabase
+    .from('trabajo_videos')
+    .update(video)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}

@@ -17,8 +17,9 @@ import type {
   PagoTrabajo, 
   StatClienteSummary 
 } from '../types/trabajo.types';
-import { ModalCliente } from './modals/ModalCliente'; // 1. IMPORTAR EL MODAL
+import { ModalCliente } from './modals/ModalCliente';
 import { ClientePanel } from './ClientePanel';
+import { MonthSelector } from '../../../shared/components/MonthSelector'; // 1. IMPORTAR EL SELECTOR DE MESES
 
 export function ClientesView() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -26,12 +27,21 @@ export function ClientesView() {
   const [pagos, setPagos] = useState<PagoTrabajo[]>([]);
   const [cargando, setCargando] = useState(true);
   
-  // Estado para navegar al detalle de un cliente
   const [clienteActivoId, setClienteActivoId] = useState<string | null>(null);
-
-  // Estados para el Modal de Crear/Editar Cliente
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [clienteAEditar, setClienteAEditar] = useState<Cliente | null>(null);
+
+  // 2. ESTADO PARA EL MES SELECCIONADO
+  const [mesActual, setMesActual] = useState(new Date());
+
+  // Función para mover el mes
+  function moverMes(direccion: -1 | 1) {
+    setMesActual((prev) => {
+      const nuevo = new Date(prev);
+      nuevo.setMonth(nuevo.getMonth() + direccion);
+      return nuevo;
+    });
+  }
 
   async function cargarDatos() {
     setCargando(true);
@@ -55,9 +65,10 @@ export function ClientesView() {
     cargarDatos();
   }, []);
 
-  const stats = useMemo(() => {
-    const mesActual = new Date().getMonth();
-    const anoActual = new Date().getFullYear();
+  // 3. ACTUALIZAR EL USEMEMO PARA QUE USE EL `mesActual` EN LUGAR DE `new Date()`
+const stats = useMemo(() => {
+    const mesFiltro = mesActual.getMonth();
+    const anoFiltro = mesActual.getFullYear();
 
     let globalIngresos = 0;
     let globalEntregados = 0;
@@ -78,20 +89,27 @@ export function ClientesView() {
       videosCli.forEach(v => {
         const cobrado = Number(v.inversion || 0) + Number(v.bono || 0);
 
-        if (v.estado === 'sin_empezar' || v.estado === 'en_curso') { 
-          pendientes++; 
-          globalPendientes++; 
-        } else if (v.estado === 'listo') {
+        if (v.estado === 'listo') {
           totalConsumido += cobrado;
-          const fechaRev = v.fecha_entrega || v.fecha_pago || v.fecha_recibido || v.ultima_edicion;
-          if (fechaRev) {
-            const d = new Date(fechaRev);
-            if (d.getMonth() === mesActual && d.getFullYear() === anoActual) {
-              ingMesAct += cobrado;
-              globalIngresos += cobrado;
-              globalEntregados++;
+          
+          // Mismo fix: Prioridad a fecha_entrega y cortamos el texto para evitar la zona horaria
+          const fechaRef = v.fecha_entrega || v.fecha_subido || v.fecha_pago || v.ultima_edicion;
+          if (fechaRef) {
+            const partes = fechaRef.split('T')[0].split('-');
+            if (partes.length >= 3) {
+              const anoVal = parseInt(partes[0], 10);
+              const mesVal = parseInt(partes[1], 10) - 1; // 0-indexed para JS
+              
+              if (mesVal === mesFiltro && anoVal === anoFiltro) {
+                ingMesAct += cobrado;
+                globalIngresos += cobrado;
+                globalEntregados++;
+              }
             }
           }
+        } else {
+          pendientes++; 
+          globalPendientes++;
         }
       });
 
@@ -117,7 +135,7 @@ export function ClientesView() {
     listaStats.sort((a, b) => b.ingMesAct - a.ingMesAct);
 
     return { lista: listaStats, globalIngresos, globalEntregados, globalPendientes, clientesActivos };
-  }, [clientes, videos, pagos]);
+  }, [clientes, videos, pagos, mesActual]);
 
   if (clienteActivoId) {
     return <ClientePanel clienteId={clienteActivoId} onBack={() => setClienteActivoId(null)} />;
@@ -125,14 +143,13 @@ export function ClientesView() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* HEADER Y ACCIONES */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-[18px] font-display font-bold">Portafolio de Clientes</h2>
           <p className="text-[12px]" style={{ color: 'var(--bios-text-dim)' }}>Gestiona tus ingresos y entregas activas.</p>
         </div>
         <button
-          onClick={() => { setClienteAEditar(null); setIsModalOpen(true); }} // 2. ABRIR MODAL NUEVO CLIENTE
+          onClick={() => { setClienteAEditar(null); setIsModalOpen(true); }}
           className="flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] font-semibold transition-opacity hover:opacity-90"
           style={{ background: 'var(--bios-accent)', color: '#0a1120' }}
         >
@@ -140,7 +157,13 @@ export function ClientesView() {
         </button>
       </div>
 
-      {/* STRIP DE KPIS GLOBALES */}
+      {/* 4. RENDERIZAR EL SELECTOR DE MESES */}
+      <MonthSelector 
+        mes={mesActual} 
+        onAnterior={() => moverMes(-1)} 
+        onSiguiente={() => moverMes(1)} 
+      />
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard title="Ingresos del Mes" value={`$${stats.globalIngresos.toFixed(2)}`} icon={IconTrendingUp} color="var(--bios-ok)" />
         <KpiCard title="Videos Entregados" value={stats.globalEntregados} icon={IconVideo} color="var(--bios-accent)" />
@@ -148,7 +171,6 @@ export function ClientesView() {
         <KpiCard title="Clientes Activos" value={stats.clientesActivos} icon={IconUsers} color="var(--bios-accent-2)" />
       </div>
 
-      {/* LISTA DE CLIENTES */}
       {cargando ? (
         <div className="text-center py-10 text-[12px]" style={{ color: 'var(--bios-text-dim)' }}>Cargando clientes...</div>
       ) : stats.lista.length === 0 ? (
@@ -211,7 +233,6 @@ export function ClientesView() {
         </div>
       )}
 
-      {/* 3. RENDERIZAR EL MODAL */}
       <ModalCliente 
         open={isModalOpen}
         clienteAEditar={clienteAEditar}
