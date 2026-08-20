@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { MigradorPagos } from '../components/MigradorPagos';
 import { 
   IconPlus, 
   IconTrendingUp, 
@@ -143,6 +144,7 @@ const stats = useMemo(() => {
 
   return (
     <div className="flex flex-col gap-6">
+      <MigradorPagos />
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-[18px] font-display font-bold">Portafolio de Clientes</h2>

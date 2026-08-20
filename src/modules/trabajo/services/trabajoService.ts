@@ -255,3 +255,22 @@ export async function updateVideo(id: string, video: Partial<VideoTrabajo>) {
   if (error) throw error;
   return data;
 }
+
+export async function createPago(pago: Partial<PagoTrabajo>) {
+  const { data, error } = await supabase
+    .from('trabajo_pagos')
+    .insert([pago])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deletePago(id: string) {
+  const { error } = await supabase
+    .from('trabajo_pagos')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+  return true;
+}

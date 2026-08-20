@@ -27,6 +27,8 @@ import type {
   DireccionOrden
 } from '../types/trabajo.types';
 import { ModalVideo } from './modals/ModalVideo';
+import { ModalPago } from './modals/ModalPago';
+import { ModalHistorialPagos } from './modals/ModalHistorialPagos';
 
 interface Props {
   clienteId: string;
@@ -42,9 +44,11 @@ export function ClientePanel({ clienteId, onBack }: Props) {
   const [pagos, setPagos] = useState<PagoTrabajo[]>([]);
   const [cargando, setCargando] = useState(true);
 
-  // Estados del Modal de Video
+  // Estados de Modales
   const [modalVideoOpen, setModalVideoOpen] = useState(false);
   const [videoAEditar, setVideoAEditar] = useState<VideoTrabajo | null>(null);
+  const [modalPagoOpen, setModalPagoOpen] = useState(false);
+  const [modalHistorialOpen, setModalHistorialOpen] = useState(false);
 
   // Filtros y Orden de la Tabla
   const [filtroTexto, setFiltroTexto] = useState('');
@@ -205,17 +209,30 @@ export function ClientePanel({ clienteId, onBack }: Props) {
 
         <div className="flex flex-wrap gap-2 items-center">
           <KpiMini label="Mes Actual" value={`$${kpis.ingMes.toFixed(2)}`} color="var(--bios-accent)" />
+          
           <KpiMini 
-            label={kpis.balance > 0 ? "Consignación" : kpis.balance < 0 ? "Por Cobrar" : "Balance"} 
+            label={kpis.balance < 0 ? "Consignación" : kpis.balance > 0 ? "A Favor" : "Balance"} 
             value={`$${Math.abs(kpis.balance).toFixed(2)}`} 
-            color={kpis.balance > 0 ? "var(--bios-danger)" : kpis.balance < 0 ? "var(--bios-ok)" : "var(--bios-text)"} 
+            color={kpis.balance < 0 ? "var(--bios-danger)" : kpis.balance > 0 ? "var(--bios-ok)" : "var(--bios-text)"} 
           />
+          
           <KpiMini label="Entregados" value={kpis.entregados} color="var(--bios-text)" />
           <KpiMini label="Pendientes" value={kpis.pendientes} color="var(--bios-text)" />
           
           <div className="flex gap-2 ml-2">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-[11px] font-semibold transition-colors hover:bg-white/5" style={{ borderColor: 'var(--bios-ok)', color: 'var(--bios-ok)' }}>
+            <button 
+              onClick={() => setModalPagoOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-[11px] font-semibold transition-colors hover:bg-white/5" 
+              style={{ borderColor: 'var(--bios-ok)', color: 'var(--bios-ok)' }}
+            >
               <IconCash size={14} /> Adelanto
+            </button>
+            <button 
+              onClick={() => setModalHistorialOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-dashed rounded-lg text-[11px] font-semibold transition-colors hover:bg-white/5" 
+              style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text-dim)' }}
+            >
+              Historial
             </button>
             <button 
               onClick={() => { setVideoAEditar(null); setModalVideoOpen(true); }}
@@ -341,16 +358,31 @@ export function ClientePanel({ clienteId, onBack }: Props) {
         </table>
       </div>
 
-      {/* MODAL DE VIDEO */}
+      {/* MODALES */}
       {proyectoActivoId && (
-        <ModalVideo 
-          open={modalVideoOpen} 
-          onClose={() => setModalVideoOpen(false)}
-          onSaved={cargarDatosProyecto}
-          clienteId={clienteId}
-          proyectoId={proyectoActivoId}
-          videoAEditar={videoAEditar}
-        />
+        <>
+          <ModalVideo 
+            open={modalVideoOpen} 
+            onClose={() => setModalVideoOpen(false)}
+            onSaved={cargarDatosProyecto}
+            clienteId={clienteId}
+            proyectoId={proyectoActivoId}
+            videoAEditar={videoAEditar}
+          />
+          <ModalPago 
+            open={modalPagoOpen}
+            onClose={() => setModalPagoOpen(false)}
+            onSaved={cargarDatosProyecto}
+            clienteId={clienteId}
+            proyectoId={proyectoActivoId}
+          />
+          <ModalHistorialPagos 
+            open={modalHistorialOpen}
+            onClose={() => setModalHistorialOpen(false)}
+            pagos={pagos}
+            onPagosChanged={cargarDatosProyecto}
+          />
+        </>
       )}
     </div>
   );
