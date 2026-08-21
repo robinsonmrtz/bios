@@ -22,6 +22,7 @@ import {
   IconBriefcase,
   IconFilter,
   IconPencil,
+  IconAdjustmentsHorizontal,
 } from '@tabler/icons-react';
 
 // Re-exportamos con los mismos nombres que usa la app
@@ -49,5 +50,5 @@ export {
   IconBriefcase as IconBriefcase,
   IconFilter,
   IconPencil,
-  
+  IconAdjustmentsHorizontal,
 };

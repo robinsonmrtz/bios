@@ -1,47 +1,28 @@
 import { useEffect, useState } from 'react';
 import CuentaWidget, { type CuentaData } from './widgets/CuentaWidget';
-import { Modal } from '../../shared/components/Modal';
-import { IconPlus, IconTrash } from '../../shared/icons';
-import { ColorPicker, ImageLogoInput, ToggleCard } from '../../shared/components/FormControls';
-import { getCuentas, crearCuenta, getTransacciones, calcularSaldoCuenta } from '../../core/db/db';
+import { IconPlus } from '../../shared/icons';
+import { getCuentas, getTransacciones, calcularSaldoCuenta, archivarCuenta, type Cuenta, type Transaccion } from '../../core/db/db';
+import { CuentaFormModal } from './CuentaFormModal';
+import { ReajusteModal } from './ReajusteModal';
 
 export function CuentasView() {
-  const [cuentas, setCuentas] = useState<CuentaData[]>([]);
+  const [cuentasRaw, setCuentasRaw] = useState<Cuenta[]>([]);
+  const [transacciones, setTransacciones] = useState<Transaccion[]>([]);
   const [cargando, setCargando] = useState(true);
-  const [guardando, setGuardando] = useState(false);
 
-  // Estados del Modal
-  const [modalAbierto, setModalAbierto] = useState(false);
-  const [nuevoNombre, setNuevoNombre] = useState('');
-  const [nuevoSaldo, setNuevoSaldo] = useState('');
-  const [nuevoLogo, setNuevoLogo] = useState('');
-  const [nuevoColor, setNuevoColor] = useState('#3498db');
-  const [incluirDashboard, setIncluirDashboard] = useState(true);
+  const [formAbierto, setFormAbierto] = useState(false);
+  const [cuentaEditando, setCuentaEditando] = useState<Cuenta | null>(null);
 
-  async function cargarCuentas() {
+  const [reajusteAbierto, setReajusteAbierto] = useState(false);
+  const [cuentaParaReajustar, setCuentaParaReajustar] = useState<Cuenta | null>(null);
+  const [saldoParaReajustar, setSaldoParaReajustar] = useState(0);
+
+  async function cargar() {
     setCargando(true);
     try {
-      // Traemos cuentas Y transacciones juntas: el saldo de cada cuenta
-      // depende de sumar/restar todas las transacciones que la tocan.
-      const [filas, transacciones] = await Promise.all([getCuentas(), getTransacciones()]);
-
-      setCuentas(
-        filas.map((fila) => {
-          const saldo = calcularSaldoCuenta(fila.id!, fila.saldo_inicial, transacciones);
-          return {
-            id: fila.id!,
-            nombre: fila.nombre,
-            // TODO: cuando exista navegación de mes (pantalla Transacciones/Resumen),
-            // saldoPrevisto pasa a incluir también las transacciones PENDIENTES
-            // hasta el fin del mes navegado, igual que hacía el piloto. Por ahora
-            // son iguales porque no hay mes que navegar todavía.
-            saldoActual: saldo,
-            saldoPrevisto: saldo,
-            color: fila.color || '#3498db',
-            logo: fila.logo || undefined,
-          };
-        })
-      );
+      const [filas, trans] = await Promise.all([getCuentas(), getTransacciones()]);
+      setCuentasRaw(filas);
+      setTransacciones(trans);
     } catch (err) {
       console.error('Error cargando cuentas:', err);
       alert('No se pudieron cargar las cuentas. Revisa la consola.');
@@ -51,49 +32,55 @@ export function CuentasView() {
   }
 
   useEffect(() => {
-    cargarCuentas();
+    cargar();
   }, []);
 
-  async function handleGuardarCuenta() {
-    if (!nuevoNombre.trim()) return alert('El nombre es obligatorio');
+  const cuentas: CuentaData[] = cuentasRaw.map((fila) => {
+    const saldo = calcularSaldoCuenta(fila.id!, fila.saldo_inicial, transacciones);
+    return {
+      id: fila.id!,
+      nombre: fila.nombre,
+      // TODO: saldoPrevisto pasa a incluir pendientes hasta fin de mes
+      // navegado cuando conectemos el MonthSelector aquí también.
+      saldoActual: saldo,
+      saldoPrevisto: saldo,
+      color: fila.color || '#3498db',
+      logo: fila.logo || undefined,
+    };
+  });
 
-    setGuardando(true);
-    try {
-      await crearCuenta({
-        nombre: nuevoNombre.trim(),
-        saldo_inicial: parseFloat(nuevoSaldo) || 0,
-        color: nuevoColor,
-        logo: nuevoLogo || undefined,
-        incluir_dashboard: incluirDashboard,
-      });
-      // Recargamos todo (cuentas + transacciones) en vez de solo empujar la
-      // nueva al estado — así el saldo se calcula igual para todas.
-      await cargarCuentas();
-      limpiarYCerrar();
-    } catch (err) {
-      console.error('Error guardando cuenta:', err);
-      alert('No se pudo guardar la cuenta. Revisa la consola.');
-    } finally {
-      setGuardando(false);
+  function abrirNueva() {
+    setCuentaEditando(null);
+    setFormAbierto(true);
+  }
+
+  function abrirEditar(id: string) {
+    const raw = cuentasRaw.find((c) => c.id === id);
+    if (raw) {
+      setCuentaEditando(raw);
+      setFormAbierto(true);
     }
   }
 
-  function limpiarYCerrar() {
-    setNuevoNombre('');
-    setNuevoSaldo('');
-    setNuevoLogo('');
-    setNuevoColor('#3498db');
-    setIncluirDashboard(true);
-    setModalAbierto(false);
+  function abrirReajuste(cuenta: Cuenta) {
+    const saldo = calcularSaldoCuenta(cuenta.id!, cuenta.saldo_inicial, transacciones);
+    setCuentaParaReajustar(cuenta);
+    setSaldoParaReajustar(saldo);
+    setReajusteAbierto(true);
   }
 
-  const anchoSaldoCh = Math.max((nuevoSaldo || '0.00').length + 1, 5);
+  async function handleArchivar(id: string) {
+    if (!confirm('¿Archivar esta cuenta? Las transacciones pasadas se mantendrán seguras.')) return;
+    const ok = await archivarCuenta(id);
+    if (ok) await cargar();
+    else alert('No se pudo archivar la cuenta.');
+  }
 
   return (
     <div className="mt-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         <button
-          onClick={() => setModalAbierto(true)}
+          onClick={abrirNueva}
           className="rounded-[11px] border-2 border-dashed flex flex-col items-center justify-center gap-2 min-h-[160px] transition-colors hover:bg-white/5"
           style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text-dim)' }}
         >
@@ -119,80 +106,30 @@ export function CuentasView() {
                 borderColor: 'var(--bios-border)',
               }}
             >
-              <CuentaWidget cuenta={cuenta} />
+              <CuentaWidget
+                cuenta={cuenta}
+                onEditar={() => abrirEditar(cuenta.id)}
+                onArchivar={() => handleArchivar(cuenta.id)}
+              />
             </div>
           ))}
       </div>
 
-      <Modal open={modalAbierto} title="Añadir cuenta" onCancel={limpiarYCerrar} hideDefaultFooter>
-        <div className="flex flex-col mt-2">
-          <div className="flex flex-col items-center justify-center mb-6 mt-2">
-            <div className="flex items-center justify-center gap-1">
-              <span className="text-[18px] sm:text-[24px] font-display font-bold flex-shrink-0" style={{ color: 'var(--bios-text-dim)' }}>$</span>
-              <input
-                type="number"
-                value={nuevoSaldo}
-                onChange={(e) => setNuevoSaldo(e.target.value)}
-                placeholder="0.00"
-                className="bg-transparent text-[26px] sm:text-[38px] font-display font-bold outline-none text-left min-w-0"
-                style={{ color: 'var(--bios-text)', width: `${anchoSaldoCh}ch` }}
-              />
-            </div>
-            <div className="w-full max-w-[220px] h-px mt-1 border-b border-dashed mx-auto" style={{ borderColor: 'var(--bios-border)' }} />
-          </div>
+      <CuentaFormModal
+        open={formAbierto}
+        cuentaExistente={cuentaEditando}
+        onClose={() => setFormAbierto(false)}
+        onSaved={cargar}
+        onSolicitarReajuste={abrirReajuste}
+      />
 
-          <div className="flex flex-col gap-1.5 mb-4">
-            <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>Nombre de la institución financiera</label>
-            <input
-              type="text"
-              value={nuevoNombre}
-              onChange={(e) => setNuevoNombre(e.target.value)}
-              placeholder="Ej. Bancolombia, Efectivo..."
-              className="w-full bg-black/20 border rounded-[10px] px-3 py-2.5 text-[13px] outline-none transition-colors"
-              style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text)' }}
-            />
-          </div>
-
-          <div className="flex flex-col gap-4 mb-5">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>URL del Logo institucional</label>
-              <ImageLogoInput url={nuevoLogo} onChange={setNuevoLogo} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>Color distintivo</label>
-              <ColorPicker value={nuevoColor} onChange={setNuevoColor} />
-            </div>
-          </div>
-
-          <div className="mb-6">
-            <ToggleCard
-              label="Incluir en la suma del dashboard"
-              description="El saldo acumulado se sumará al patrimonio total visible."
-              checked={incluirDashboard}
-              onChange={setIncluirDashboard}
-            />
-          </div>
-
-          <div className="flex justify-between items-center pt-4 border-t" style={{ borderColor: 'var(--bios-border)' }}>
-            <button
-              onClick={() => { setNuevoNombre(''); setNuevoSaldo(''); setNuevoLogo(''); setNuevoColor('#3498db'); }}
-              className="flex items-center gap-1.5 text-[11px] px-3 py-2 rounded-lg transition-colors hover:bg-white/5"
-              style={{ color: 'var(--bios-text-dim)' }}
-            >
-              <IconTrash size={14} /> Limpiar campos
-            </button>
-
-            <button
-              onClick={handleGuardarCuenta}
-              disabled={guardando}
-              className="text-[12px] font-semibold px-4 py-2 rounded-lg transition-opacity hover:opacity-90 disabled:opacity-50"
-              style={{ background: 'var(--bios-accent)', color: '#0a1120' }}
-            >
-              {guardando ? 'Guardando...' : 'Guardar cuenta'}
-            </button>
-          </div>
-        </div>
-      </Modal>
+      <ReajusteModal
+        open={reajusteAbierto}
+        cuenta={cuentaParaReajustar}
+        saldoActual={saldoParaReajustar}
+        onClose={() => setReajusteAbierto(false)}
+        onSaved={cargar}
+      />
     </div>
   );
 }
