@@ -24,8 +24,9 @@ export interface Cliente {
   nombre: string;
   proyecto?: string;
   pais?: string;
+  promedio_palabras?: number;
   foto?: string;
-  promedio_palabras: number;
+
   created_at?: string;
 }
 
@@ -34,6 +35,7 @@ export interface ProyectoTrabajo {
   cliente_id: string;
   user_id?: string;
   nombre: string;
+  promedio_palabras: number;
   created_at?: string;
 }
 

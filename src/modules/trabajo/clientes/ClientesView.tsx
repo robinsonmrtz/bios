@@ -7,6 +7,23 @@ import { ClientePanel } from './ClientePanel';
 import { MonthSelector } from '../../../shared/components/MonthSelector';
 import { ConfirmModal } from '../../../shared/components/ConfirmModal';
 
+// Función para transformar el texto del país en una bandera
+function getFlagEmoji(country: string) {
+  if (!country) return '';
+  const c = country.toLowerCase().trim();
+  const flags: Record<string, string> = {
+    'españa': '🇪🇸', 'colombia': '🇨🇴', 'mexico': '🇲🇽', 'méxico': '🇲🇽',
+    'argentina': '🇦🇷', 'chile': '🇨🇱', 'peru': '🇵🇪', 'perú': '🇵🇪',
+    'ecuador': '🇪🇨', 'venezuela': '🇻🇪', 'bolivia': '🇧🇴', 'uruguay': '🇺🇾',
+    'paraguay': '🇵🇾', 'costa rica': '🇨🇷', 'panama': '🇵🇦', 'panamá': '🇵🇦',
+    'republica dominicana': '🇩🇴', 'república dominicana': '🇩🇴',
+    'honduras': '🇭🇳', 'el salvador': '🇸🇻', 'guatemala': '🇬🇹',
+    'nicaragua': '🇳🇮', 'cuba': '🇨🇺', 'puerto rico': '🇵🇷',
+    'estados unidos': '🇺🇸', 'usa': '🇺🇸', 'eeuu': '🇺🇸'
+  };
+  return flags[c] || c;
+}
+
 export function ClientesView() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [videos, setVideos] = useState<VideoTrabajo[]>([]);
@@ -121,14 +138,14 @@ export function ClientesView() {
               key={c.id}
               className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 rounded-[16px] border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-all"
             >
-              {/* Izquierda: Avatar, Nombre y Proyecto */}
               <div className="flex items-center gap-3.5 min-w-0 flex-1">
                 <div className="w-12 h-12 rounded-full flex-shrink-0 border border-gray-200 overflow-hidden flex items-center justify-center font-bold text-[14px] bg-gray-50 text-gray-700">
                   {c.foto ? <img src={c.foto} className="w-full h-full object-cover" alt={c.nombre} /> : c.nombre.substring(0, 2).toUpperCase()}
                 </div>
                 <div className="min-w-0">
+                  {/* AQUÍ SE MUESTRA LA BANDERA GRACIAS A LA FUNCIÓN */}
                   <div className="font-bold text-[14px] text-gray-900 truncate flex items-center gap-1.5">
-                    {c.nombre} {c.pais && <span className="text-[12px] font-normal text-gray-400">({c.pais})</span>}
+                    {c.nombre} {c.pais && <span className="text-[14px]">{getFlagEmoji(c.pais)}</span>}
                   </div>
                   <div className="text-[12px] text-gray-500 truncate">
                     {c.proyecto || 'Edición de video y animación'}
@@ -136,10 +153,8 @@ export function ClientesView() {
                 </div>
               </div>
 
-              {/* Derecha: Columnas perfectamente alineadas con anchos fijos */}
               <div className="flex flex-wrap md:flex-nowrap items-center justify-between md:justify-end gap-6 w-full md:w-auto pt-3 md:pt-0 border-t md:border-t-0 border-gray-100">
                 
-                {/* Columna 1: Ingresos / Balance (Ancho fijo) */}
                 <div className="w-36 text-left md:text-right">
                   <div className="font-bold text-[15px] text-gray-900">${c.ingMesAct.toFixed(2)}</div>
                   {c.balance > 0 ? (
@@ -151,13 +166,11 @@ export function ClientesView() {
                   )}
                 </div>
 
-                {/* Columna 2: Conteo de videos (Ancho fijo) */}
                 <div className="w-24 text-center">
                   <div className="font-bold text-[15px] text-gray-900">{c.totalVideos}</div>
                   <div className="text-[10px] text-gray-400 uppercase tracking-wide">videos totales</div>
                 </div>
 
-                {/* Columna 3: Estado / Badge (Ancho fijo) */}
                 <div className="w-32 flex justify-center">
                   {c.inactivo ? (
                     <Badge text="Inactivo" color="gray" />
@@ -168,7 +181,6 @@ export function ClientesView() {
                   )}
                 </div>
 
-                {/* Columna 4: Botones de Acción */}
                 <div className="flex items-center gap-1.5 ml-auto md:ml-0">
                   <button 
                     onClick={() => setClienteActivoId(c.id)} 

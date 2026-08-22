@@ -95,10 +95,16 @@ export async function crearProyecto(proyecto: Omit<ProyectoTrabajo, 'id' | 'crea
   return data;
 }
 
-export async function actualizarProyecto(id: string, nombre: string): Promise<void> {
+// Actualizado para aceptar y guardar también el promedio de palabras
+export async function actualizarProyecto(id: string, nombre: string, promedioPalabras?: number): Promise<void> {
+  const payload: any = { nombre };
+  if (promedioPalabras !== undefined) {
+    payload.promedio_palabras = promedioPalabras;
+  }
+
   const { error } = await supabase
     .from('trabajo_proyectos')
-    .update({ nombre })
+    .update(payload)
     .eq('id', id);
 
   if (error) {

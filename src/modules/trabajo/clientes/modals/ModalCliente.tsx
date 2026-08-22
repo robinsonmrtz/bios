@@ -1,27 +1,36 @@
 import { useState, useEffect } from 'react';
 import { Modal } from '../../../../shared/components/Modal';
+import { ImageLogoInput } from '../../../../shared/components/FormControls';
 import { crearCliente, actualizarCliente, crearProyecto } from '../../services/trabajoService';
 import type { Cliente } from '../../types/trabajo.types';
 
 interface Props { open: boolean; clienteAEditar?: Cliente | null; onClose: () => void; onSaved: () => void; }
 
 export function ModalCliente({ open, clienteAEditar, onClose, onSaved }: Props) {
-  const [nombre, setNombre] = useState(''); const [proyectoBase, setProyectoBase] = useState('');
-  const [pais, setPais] = useState(''); const [promedioPalabras, setPromedioPalabras] = useState(3000);
+  const [nombre, setNombre] = useState(''); 
+  const [proyectoBase, setProyectoBase] = useState('');
+  const [pais, setPais] = useState(''); 
+  const [foto, setFoto] = useState('');
   const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
-    if (clienteAEditar) { setNombre(clienteAEditar.nombre); setProyectoBase(clienteAEditar.proyecto || ''); setPais(clienteAEditar.pais || ''); setPromedioPalabras(clienteAEditar.promedio_palabras || 3000); } 
-    else { setNombre(''); setProyectoBase(''); setPais(''); setPromedioPalabras(3000); }
+    if (clienteAEditar) { 
+      setNombre(clienteAEditar.nombre); 
+      setProyectoBase(clienteAEditar.proyecto || ''); 
+      setPais(clienteAEditar.pais || ''); 
+      setFoto(clienteAEditar.foto || '');
+    } else { 
+      setNombre(''); setProyectoBase(''); setPais(''); setFoto(''); 
+    }
   }, [clienteAEditar, open]);
 
   async function handleGuardar() {
     setGuardando(true);
     try {
-      if (clienteAEditar) await actualizarCliente(clienteAEditar.id, { nombre, proyecto: proyectoBase, pais, promedio_palabras: promedioPalabras });
+      if (clienteAEditar) await actualizarCliente(clienteAEditar.id, { nombre, proyecto: proyectoBase, pais, foto });
       else {
-        const nc = await crearCliente({ nombre, proyecto: proyectoBase, pais, promedio_palabras: promedioPalabras });
-        if (nc) await crearProyecto({ cliente_id: nc.id, nombre: proyectoBase || 'Proyecto Principal' });
+        const nc = await crearCliente({ nombre, proyecto: proyectoBase, pais, foto });
+        if (nc) await crearProyecto({ cliente_id: nc.id, nombre: proyectoBase || 'Proyecto Principal', promedio_palabras: 3000 });
       }
       onSaved(); onClose();
     } finally { setGuardando(false); }
@@ -40,12 +49,13 @@ export function ModalCliente({ open, clienteAEditar, onClose, onSaved }: Props) 
   return (
     <Modal open={open} title={clienteAEditar ? 'Editar cliente' : 'Nuevo cliente'} onClose={onClose} maxWidth="md" footer={footer}>
       <div className="flex flex-col gap-4 mt-2">
+        <div>
+          <label className={labelClass}>Foto / Avatar</label>
+          <ImageLogoInput url={foto} onChange={setFoto} />
+        </div>
         <div><label className={labelClass}>Nombre / Canal</label><input value={nombre} onChange={e => setNombre(e.target.value)} className={inputClass} /></div>
         <div><label className={labelClass}>Servicio base</label><input value={proyectoBase} onChange={e => setProyectoBase(e.target.value)} className={inputClass} /></div>
-        <div className="grid grid-cols-2 gap-3">
-          <div><label className={labelClass}>País</label><input value={pais} onChange={e => setPais(e.target.value)} className={inputClass} /></div>
-          <div><label className={labelClass}>Promedio Palabras</label><input type="number" value={promedioPalabras} onChange={e => setPromedioPalabras(Number(e.target.value))} className={inputClass} /></div>
-        </div>
+        <div><label className={labelClass}>País</label><input value={pais} onChange={e => setPais(e.target.value)} className={inputClass} placeholder="Ej: España, Colombia..." /></div>
       </div>
     </Modal>
   );
