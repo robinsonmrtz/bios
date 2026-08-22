@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { IconArrowLeft, IconCash, IconPlus, IconFolder, IconPencil, IconTrash, IconExternalLink, IconChartBar } from '@tabler/icons-react';
+import { IconArrowLeft, IconCash, IconPlus, IconFolder, IconPencil, IconTrash } from '@tabler/icons-react';
 import { getClientes, getProyectosByCliente, getVideosByProyecto, getPagosByProyecto, actualizarEstadoVideo, eliminarVideo } from '../services/trabajoService';
 import type { Cliente, ProyectoTrabajo, VideoTrabajo, PagoTrabajo, EstadoVideo, ColumnaOrdenVideo, DireccionOrden } from '../types/trabajo.types';
 import { ModalVideo } from './modals/ModalVideo';

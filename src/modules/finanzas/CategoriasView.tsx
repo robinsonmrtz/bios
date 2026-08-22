@@ -170,8 +170,7 @@ export function CategoriasView() {
       <Modal
         open={modalAbierto}
         title={editandoId ? 'Editar categoría' : 'Nueva categoría'}
-        onCancel={() => setModalAbierto(false)}
-        hideDefaultFooter
+        onClose={() => setModalAbierto(false)}
       >
         <div className="flex flex-col gap-4 mt-2">
           <div className="flex items-center gap-3">

@@ -22,13 +22,28 @@ export function DashboardShell() {
       <Modal
         open={showModal}
         title="¿Cancelar esta acción?"
-        description="Este es el mismo componente modal reutilizado en toda la app — se comparte entre módulos sin duplicar código."
-        confirmLabel="Sí, cancelar"
-        cancelLabel="Volver"
-        danger
-        onConfirm={() => setShowModal(false)}
-        onCancel={() => setShowModal(false)}
-      />
+        onClose={() => setShowModal(false)}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+            >
+              Volver
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700"
+            >
+              Sí, cancelar
+            </button>
+          </>
+        }
+      >
+        <p>Este es el mismo componente modal reutilizado en toda la app y compartido entre módulos sin duplicar código.</p>
+      </Modal>
     </div>
   );
 }

@@ -9,7 +9,7 @@ import {
   type Categoria,
   type Cuenta,
 } from '../../core/db/db';
-import { IconSwap, IconBuildingStore, IconPlus, IconTrash, IconFilter, IconPencil } from '../../shared/icons';
+import { IconSwap, IconPlus, IconTrash, IconFilter, IconPencil } from '../../shared/icons';
 import { TransaccionModal } from './TransaccionModal';
 
 interface Props {
