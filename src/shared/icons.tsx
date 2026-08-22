@@ -23,6 +23,7 @@ import {
   IconFilter,
   IconPencil,
   IconAdjustmentsHorizontal,
+  IconSettings,
 } from '@tabler/icons-react';
 
 // Re-exportamos con los mismos nombres que usa la app
@@ -51,4 +52,5 @@ export {
   IconFilter,
   IconPencil,
   IconAdjustmentsHorizontal,
+  IconSettings,
 };

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { navItems } from '../navConfig';
-import { IconPlus, IconMenu } from '../icons';
+import { IconMenu, IconSettings } from '../icons';
 
 interface Props {
   activeId: string;
@@ -52,11 +52,13 @@ export function Sidebar({ activeId, onSelect }: Props) {
       })}
 
       <button
+        onClick={() => onSelect('configuracion')}
         className="mt-auto mb-2 w-full flex items-center gap-3 border border-dashed text-[13px]"
         style={{ height: 34, padding: '0 9px', borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(244,247,252,0.4)' }}
+        title="Configuración"
       >
-        <IconPlus style={{ width: 16, height: 16, flexShrink: 0 }} />
-        <span style={{ opacity: expanded ? 1 : 0, width: expanded ? 'auto' : 0 }}>Nuevo módulo</span>
+        <IconSettings style={{ width: 16, height: 16, flexShrink: 0 }} />
+        <span style={{ opacity: expanded ? 1 : 0, width: expanded ? 'auto' : 0 }}>Configuración</span>
       </button>
 
       <button

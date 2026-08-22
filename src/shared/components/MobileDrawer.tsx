@@ -1,5 +1,5 @@
 import { navItems } from '../navConfig';
-import { IconPlus } from '../icons';
+import { IconSettings } from '../icons';
 
 interface Props {
   open: boolean;
@@ -62,11 +62,12 @@ export function MobileDrawer({ open, activeId, onSelect, onClose }: Props) {
         })}
 
         <button
+          onClick={() => { onSelect('configuracion'); onClose(); }}
           className="mt-auto w-full flex items-center gap-3 border border-dashed text-[13px]"
           style={{ height: 34, padding: '0 9px', borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(244,247,252,0.4)' }}
         >
-          <IconPlus style={{ width: 16, height: 16, flexShrink: 0 }} />
-          <span>Nuevo módulo</span>
+          <IconSettings style={{ width: 16, height: 16, flexShrink: 0 }} />
+          <span>Configuración</span>
         </button>
       </div>
     </>

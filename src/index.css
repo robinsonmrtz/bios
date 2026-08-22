@@ -44,11 +44,12 @@ body {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* ============ Puntas afiladas en TODA la app ============ */
-/* Anula cualquier rounded-* de Tailwind (tarjetas, botones, inputs,
-   modales, hovers, lo que sea) de un solo lugar. No depende de estado,
-   así que cubre también los estados hover/focus/active automáticamente. */
-*, *::before, *::after {
+/* ============ Puntas afiladas — controlable desde Configuración ============ */
+/* Solo aplica mientras <html> tenga la clase .bios-sharp-corners (la agrega/
+   quita themeStore.ts según lo que el usuario elija en Diseño). */
+.bios-sharp-corners *,
+.bios-sharp-corners *::before,
+.bios-sharp-corners *::after {
   border-radius: 0 !important;
 }
 
