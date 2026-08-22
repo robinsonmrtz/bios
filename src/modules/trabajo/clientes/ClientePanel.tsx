@@ -1,11 +1,12 @@
 import { useEffect, useState, useMemo } from 'react';
-import { IconArrowLeft, IconCash, IconPlus, IconFolder, IconPencil, IconTrash } from '@tabler/icons-react';
+import { IconArrowLeft, IconCash, IconPlus, IconFolder, IconPencil, IconTrash, IconFileExport } from '@tabler/icons-react';
 import { getClientes, getProyectosByCliente, getVideosByProyecto, getPagosByProyecto, actualizarEstadoVideo, eliminarVideo } from '../services/trabajoService';
 import type { Cliente, ProyectoTrabajo, VideoTrabajo, PagoTrabajo, EstadoVideo, ColumnaOrdenVideo, DireccionOrden } from '../types/trabajo.types';
 import { ModalVideo } from './modals/ModalVideo';
 import { ModalPago } from './modals/ModalPago';
 import { ModalHistorialPagos } from './modals/ModalHistorialPagos';
 import { ConfirmModal } from '../../../shared/components/ConfirmModal';
+import { MonthSelector } from '../../../shared/components/MonthSelector';
 
 interface Props { clienteId: string; onBack: () => void; }
 
@@ -17,6 +18,8 @@ export function ClientePanel({ clienteId, onBack }: Props) {
   const [pagos, setPagos] = useState<PagoTrabajo[]>([]);
   const [cargando, setCargando] = useState(true);
 
+  const [mesActual, setMesActual] = useState(new Date());
+
   const [modalVideoOpen, setModalVideoOpen] = useState(false);
   const [videoAEditar, setVideoAEditar] = useState<VideoTrabajo | null>(null);
   const [videoAEliminar, setVideoAEliminar] = useState<VideoTrabajo | null>(null);
@@ -27,6 +30,14 @@ export function ClientePanel({ clienteId, onBack }: Props) {
   const [filtroEstado, setFiltroEstado] = useState<'todos' | EstadoVideo>('todos');
   const [ordenColumna, setOrdenColumna] = useState<ColumnaOrdenVideo>('numero');
   const [ordenDireccion, setOrdenDireccion] = useState<DireccionOrden>('asc');
+
+  function moverMes(direccion: -1 | 1) {
+    setMesActual((prev) => {
+      const nuevo = new Date(prev);
+      nuevo.setMonth(nuevo.getMonth() + direccion);
+      return nuevo;
+    });
+  }
 
   useEffect(() => {
     async function init() {
@@ -52,25 +63,29 @@ export function ClientePanel({ clienteId, onBack }: Props) {
 
   const kpis = useMemo(() => {
     let ingMes = 0, totalPagado = 0, totalConsumido = 0, entregados = 0, pendientes = 0;
-    const mesActual = new Date().getMonth(); const anoActual = new Date().getFullYear();
+    const mesFiltro = mesActual.getMonth(); 
+    const anoFiltro = mesActual.getFullYear();
 
     pagos.forEach(p => { totalPagado += Number(p.monto); });
     videos.forEach(v => {
       const cobrado = Number(v.inversion || 0) + Number(v.bono || 0);
       if (v.estado === 'listo') {
-        entregados++; totalConsumido += cobrado;
+        totalConsumido += cobrado;
         const fechaRef = v.fecha_entrega || v.fecha_subido || v.fecha_pago || v.ultima_edicion;
         if (fechaRef) {
           const partes = fechaRef.split('T')[0].split('-');
-          if (partes.length >= 3 && parseInt(partes[1], 10) - 1 === mesActual && parseInt(partes[0], 10) === anoActual) {
+          if (partes.length >= 3 && parseInt(partes[1], 10) - 1 === mesFiltro && parseInt(partes[0], 10) === anoFiltro) {
             ingMes += cobrado;
+            entregados++;
           }
         }
-      } else { pendientes++; }
+      } else { 
+        pendientes++; 
+      }
     });
 
     return { ingMes, entregados, pendientes, balance: totalPagado - totalConsumido };
-  }, [videos, pagos]);
+  }, [videos, pagos, mesActual]);
 
   const videosFiltrados = useMemo(() => {
     let lista = videos.filter(v => v.nombre.toLowerCase().includes(filtroTexto.toLowerCase()) && (filtroEstado === 'todos' || v.estado === filtroEstado));
@@ -106,15 +121,137 @@ export function ClientePanel({ clienteId, onBack }: Props) {
     cargarDatosProyecto();
   }
 
+  // Función para abrir la ventana de impresión optimizada para PDF
+  function handleExportarPDF() {
+    if (!cliente) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Por favor permite las ventanas emergentes en tu navegador para generar el PDF.');
+      return;
+    }
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8">
+        <title>Reporte Ejecutivo - ${cliente.nombre}</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1f2937; padding: 30px; margin: 0; background: #ffffff; }
+          .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 25px; }
+          .client-info h1 { margin: 0; font-size: 22px; font-weight: bold; color: #111827; }
+          .client-info p { margin: 4px 0 0 0; color: #4b5563; font-size: 13px; }
+          .meta-box { text-align: right; font-size: 12px; color: #4b5563; line-height: 1.4; }
+          .section-title { font-size: 14px; font-weight: bold; margin: 25px 0 10px 0; color: #374151; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 11px; }
+          th, td { border: 1px solid #e5e7eb; padding: 8px 10px; text-align: left; }
+          th { background-color: #f9fafb; font-weight: bold; color: #374151; }
+          .text-right { text-align: right; }
+          .text-center { text-align: center; }
+          .badge { padding: 3px 6px; border-radius: 4px; font-weight: bold; font-size: 9px; text-transform: uppercase; }
+          .badge-listo { background: #dcfce7; color: #166534; }
+          .badge-curso { background: #fef9c3; color: #854d0e; }
+          .badge-sin { background: #fee2e2; color: #991b1b; }
+          @media print {
+            body { padding: 0; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="client-info">
+            <h1>${cliente.nombre}</h1>
+            <p><strong>Proyecto:</strong> ${cliente.proyecto || 'General'} &nbsp;|&nbsp; <strong>País:</strong> ${cliente.pais || 'N/A'}</p>
+          </div>
+          <div class="meta-box">
+            <strong>Fecha de emisión:</strong> ${new Date().toLocaleDateString()}<br>
+            <strong>Consignación Actual:</strong> $${Math.abs(kpis.balance).toFixed(2)}
+          </div>
+        </div>
+
+        <div class="section-title">Historial de Pagos y Adelantos</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Notas / Referencia</th>
+              <th class="text-right">Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${pagos.length === 0 ? '<tr><td colspan="3" class="text-center" style="color: #9ca3af;">No hay pagos registrados.</td></tr>' :
+              pagos.map(p => `
+                <tr>
+                  <td>${p.fecha}</td>
+                  <td>${p.nota || 'Adelanto de proyecto'}</td>
+                  <td class="text-right" style="font-weight: bold; color: #16a34a;">+$${Number(p.monto).toFixed(2)}</td>
+                </tr>
+              `).join('')}
+          </tbody>
+        </table>
+
+        <div class="section-title">Listado de Videos y Entregas</div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 35px;" class="text-center">#</th>
+              <th>Título del Video</th>
+              <th>Recibido</th>
+              <th>Entrega</th>
+              <th>Estado</th>
+              <th class="text-right">Cobrado</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${videos.length === 0 ? '<tr><td colspan="6" class="text-center" style="color: #9ca3af;">No hay videos registrados.</td></tr>' :
+              videos.map(v => {
+                const cobrado = Number(v.inversion || 0) + Number(v.bono || 0);
+                const badgeClass = v.estado === 'listo' ? 'badge-listo' : v.estado === 'en_curso' ? 'badge-curso' : 'badge-sin';
+                return `
+                  <tr>
+                    <td class="text-center" style="font-weight: bold; color: #2563eb;">${String(v.numero_video).padStart(2, '0')}</td>
+                    <td style="font-weight: 500;">${v.nombre}</td>
+                    <td>${v.fecha_recibido || '—'}</td>
+                    <td>${v.fecha_entrega || '—'}</td>
+                    <td><span class="badge ${badgeClass}">${v.estado.replace('_', ' ')}</span></td>
+                    <td class="text-right" style="font-weight: bold;">$${cobrado.toFixed(2)}</td>
+                  </tr>
+                `;
+              }).join('')}
+          </tbody>
+        </table>
+
+        <script>
+          window.onload = function() {
+            window.print();
+            // Opcional: cerrar ventana luego de imprimir
+            // window.onafterprint = function() { window.close(); }
+          }
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  }
+
   const nextVideoNumber = videos.length > 0 ? Math.max(...videos.map(v => v.numero_video)) + 1 : 1;
 
   if (!cliente) return <div className="p-10 text-center">Cargando perfil...</div>;
 
   return (
     <div className="flex flex-col gap-5">
-      <button onClick={onBack} className="flex items-center gap-2 text-[12px] w-fit hover:underline" style={{ color: 'var(--bios-text-faint)' }}>
-        <IconArrowLeft size={14} /> Volver a clientes
-      </button>
+      <div className="flex items-center justify-between">
+        <button onClick={onBack} className="flex items-center gap-2 text-[12px] w-fit hover:underline" style={{ color: 'var(--bios-text-faint)' }}>
+          <IconArrowLeft size={14} /> Volver a clientes
+        </button>
+
+        <button onClick={handleExportarPDF} className="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-[11px] font-semibold transition-colors hover:bg-white/5" style={{ borderColor: 'var(--bios-accent)', color: 'var(--bios-accent)' }}>
+          <IconFileExport size={14} /> Exportar en PDF
+        </button>
+      </div>
 
       <div className="flex flex-wrap gap-4 items-center justify-between">
         <div className="flex items-center gap-4">
@@ -129,7 +266,7 @@ export function ClientePanel({ clienteId, onBack }: Props) {
 
         <div className="flex flex-wrap gap-2 items-center">
           <KpiMini label="Mes Actual" value={`$${kpis.ingMes.toFixed(2)}`} color="var(--bios-accent)" />
-          <KpiMini label={kpis.balance < 0 ? "Consignación" : kpis.balance > 0 ? "A Favor" : "Balance"} value={`$${Math.abs(kpis.balance).toFixed(2)}`} color={kpis.balance < 0 ? "var(--bios-danger)" : kpis.balance > 0 ? "var(--bios-ok)" : "var(--bios-text)"} />
+          <KpiMini label="Consignación" value={`$${Math.abs(kpis.balance).toFixed(2)}`} color={kpis.balance < 0 ? "var(--bios-danger)" : "var(--bios-ok)"} />
           <KpiMini label="Entregados" value={kpis.entregados} color="var(--bios-text)" />
           <KpiMini label="Pendientes" value={kpis.pendientes} color="var(--bios-text)" />
           <div className="flex gap-2 ml-2">
@@ -146,15 +283,14 @@ export function ClientePanel({ clienteId, onBack }: Props) {
         </div>
       </div>
 
+      <MonthSelector mes={mesActual} onAnterior={() => moverMes(-1)} onSiguiente={() => moverMes(1)} />
+
       <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
         {proyectos.map(p => (
           <button key={p.id} onClick={() => setProyectoActivoId(p.id)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px] border ${proyectoActivoId === p.id ? 'border-solid' : 'border-dashed'}`} style={{ borderColor: proyectoActivoId === p.id ? 'var(--bios-accent)' : 'var(--bios-border)', background: proyectoActivoId === p.id ? 'color-mix(in srgb, var(--bios-accent) 10%, transparent)' : 'transparent', color: proyectoActivoId === p.id ? 'var(--bios-accent)' : 'var(--bios-text-dim)' }}>
             <IconFolder size={14} /> {p.nombre} {proyectoActivoId === p.id && <IconPencil size={12} className="opacity-50 hover:opacity-100" />}
           </button>
         ))}
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] border border-dashed bg-transparent hover:bg-white/5" style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text-faint)' }}>
-          <IconPlus size={14} /> Nuevo
-        </button>
       </div>
 
       <div className="flex flex-wrap gap-3 items-center p-3 rounded-[10px] border" style={{ background: 'var(--bios-card-a)', borderColor: 'var(--bios-border)' }}>

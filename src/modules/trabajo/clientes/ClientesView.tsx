@@ -145,7 +145,7 @@ export function ClientesView() {
                   {c.balance > 0 ? (
                     <div className="text-[11px] font-semibold text-red-500 truncate">Consignación: ${c.balance.toFixed(2)}</div>
                   ) : c.balance < 0 ? (
-                    <div className="text-[11px] font-semibold text-green-600 truncate">A favor: ${Math.abs(c.balance).toFixed(2)}</div>
+                    <div className="text-[11px] font-semibold text-green-600 truncate">Consignación: ${Math.abs(c.balance).toFixed(2)}</div>
                   ) : (
                     <div className="text-[11px] text-gray-400 truncate">Balance al día</div>
                   )}
