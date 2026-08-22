@@ -7,7 +7,7 @@ export function DashboardShell() {
 
   return (
     <div className="pb-10">
-      <div className="max-w-[1180px] mx-auto px-5 pt-4">
+      <div className="w-full px-5 sm:px-8 pt-4">
         <IslandsGrid />
 
         <button

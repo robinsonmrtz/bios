@@ -1,89 +1,57 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect } from 'react';
+import { IconX } from '@tabler/icons-react';
 
 interface ModalProps {
   open: boolean;
-  title: string;
-  description?: string;
-  children?: ReactNode;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  danger?: boolean;
-  onConfirm?: () => void;
-  onCancel: () => void;
-  hideDefaultFooter?: boolean; // <-- NUEVO: Para ocultar el pie por defecto y usar uno personalizado
+  title?: ReactNode;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+  maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }
 
-/**
- * Modal único y reutilizable. Cualquier módulo que necesite confirmar,
- * cancelar o mostrar un formulario corto debe usar este mismo componente
- * en vez de crear uno nuevo.
- */
-export function Modal({
-  open,
-  title,
-  description,
-  children,
-  confirmLabel = 'Confirmar',
-  cancelLabel = 'Cancelar',
-  danger = false,
-  onConfirm,
-  onCancel,
-  hideDefaultFooter = false, // <-- NUEVO: Por defecto es falso para no alterar los otros modales
-}: ModalProps) {
+const maxW = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-xl',
+  '2xl': 'max-w-2xl',
+};
+
+export function Modal({ open, title, onClose, children, footer, maxWidth = 'md' }: ModalProps) {
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    if (open) window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div
-        className="w-full max-w-[420px] rounded-[14px] p-[22px] border"
-        style={{
-          background: 'linear-gradient(160deg, var(--bios-card-a), var(--bios-card-b))',
-          borderColor: 'var(--bios-border)',
-          boxShadow: '0 30px 60px rgba(0,0,0,0.5)',
-        }}
-      >
-        <div className="flex items-center justify-between mb-1.5">
-          <h3 className="font-display text-[14px] font-bold">{title}</h3>
-          <button 
-            onClick={onCancel}
-            className="text-[var(--bios-text-faint)] hover:text-[var(--bios-text)] text-sm px-1.5 py-0.5 rounded-md hover:bg-white/5"
-          >
-            ✕
-          </button>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+      <div className="absolute inset-0 bg-[#0f1626]/60 backdrop-blur-sm transition-opacity cursor-pointer" onClick={onClose} />
+      
+      <div className={`relative w-full ${maxW[maxWidth]} bg-white rounded-[20px] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transform transition-all`}>
+        {title && (
+          <div className="flex items-center justify-between px-6 py-5 shrink-0">
+            <h2 className="text-[16px] font-bold text-gray-800">{title}</h2>
+            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-800 transition-colors">
+              <IconX size={18} stroke={2.5} />
+            </button>
+          </div>
+        )}
+        
+        <div className="px-6 shrink-0">
+          <div className="w-full border-b border-dashed border-gray-200"></div>
         </div>
 
-        {description && (
-          <p className="text-[11.5px] leading-relaxed mb-4" style={{ color: 'var(--bios-text-dim)' }}>
-            {description}
-          </p>
-        )}
+        <div className="p-6 overflow-y-auto flex-1 text-gray-700 custom-scrollbar">
+          {children}
+        </div>
 
-        {children}
-
-        {/* Si hideDefaultFooter es true, no muestra estos botones estándar y deja que el children ponga los suyos */}
-        {!hideDefaultFooter && (
-          <div className="flex gap-2 justify-end mt-4">
-            <button
-              onClick={onCancel}
-              className="text-[11px] px-3 py-1.5 rounded-lg border transition-colors"
-              style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text-dim)' }}
-            >
-              {cancelLabel}
-            </button>
-            {onConfirm && (
-              <button
-                onClick={onConfirm}
-                className="text-[11px] px-3 py-1.5 rounded-lg font-semibold"
-                style={{
-                  background: danger
-                    ? 'linear-gradient(90deg, var(--bios-danger), #ff8f6b)'
-                    : 'linear-gradient(90deg, var(--bios-accent), var(--bios-accent-2))',
-                  color: '#0a1120',
-                }}
-              >
-                {confirmLabel}
-              </button>
-            )}
+        {footer && (
+          <div className="px-6 py-4 bg-white border-t border-gray-100 shrink-0 flex items-center justify-end gap-3 rounded-b-[20px]">
+            {footer}
           </div>
         )}
       </div>

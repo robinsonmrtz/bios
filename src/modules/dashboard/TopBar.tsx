@@ -24,12 +24,12 @@ export function TopBar({ onMenuClick }: Props) {
   return (
     <div
       className="sticky top-0 z-10 flex items-center justify-between px-5 py-2.5 backdrop-blur-md border-b"
-      style={{ background: 'rgba(15,22,38,0.85)', borderColor: 'var(--bios-border)' }}
+      style={{ background: 'rgba(255,255,255,0.85)', borderColor: 'var(--bios-border)' }}
     >
       <div className="flex items-center gap-2.5">
         <button
           onClick={onMenuClick}
-          className="flex md:hidden w-[30px] h-[30px] rounded-[9px] border items-center justify-center"
+          className="flex md:hidden w-[30px] h-[30px] border items-center justify-center"
           style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text-dim)' }}
         >
           <IconMenu style={{ width: 16, height: 16 }} />
@@ -48,13 +48,13 @@ export function TopBar({ onMenuClick }: Props) {
       <div className="flex items-center gap-3.5 relative">
         <button
           onClick={() => setShowNotif((s) => !s)}
-          className="relative w-[30px] h-[30px] rounded-[9px] border flex items-center justify-center text-[14px]"
+          className="relative w-[30px] h-[30px] border flex items-center justify-center text-[14px]"
           style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text-dim)' }}
         >
           🔔
           {notifications.length > 0 && (
             <span
-              className="absolute -top-1 -right-1 text-white text-[9px] rounded-[10px] px-1 font-mono"
+              className="absolute -top-1 -right-1 text-white text-[9px] px-1 font-mono"
               style={{ background: 'var(--bios-danger)' }}
             >
               {notifications.length}
@@ -70,11 +70,11 @@ export function TopBar({ onMenuClick }: Props) {
 
         {showNotif && (
           <div
-            className="absolute top-11 right-0 w-[270px] rounded-[14px] p-2.5 border z-20"
+            className="absolute top-11 right-0 w-[270px] p-2.5 border z-20"
             style={{
               background: 'linear-gradient(160deg, var(--bios-card-a), var(--bios-card-b))',
               borderColor: 'var(--bios-border)',
-              boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
+              boxShadow: '0 20px 50px rgba(20,24,38,0.15)',
             }}
           >
             <h4
@@ -84,7 +84,7 @@ export function TopBar({ onMenuClick }: Props) {
               Notificaciones
             </h4>
             {notifications.map((n) => (
-              <div key={n.id} className="flex gap-2 px-1.5 py-2 rounded-lg hover:bg-white/5">
+              <div key={n.id} className="flex gap-2 px-1.5 py-2 hover:bg-black/5">
                 <div className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0" style={{ background: n.color }} />
                 <div>
                   <p className="text-[11.5px] m-0">{n.text}</p>
@@ -99,16 +99,16 @@ export function TopBar({ onMenuClick }: Props) {
 
         {showMenu && (
           <div
-            className="absolute top-11 right-0 w-[160px] rounded-[12px] p-1.5 border z-20"
+            className="absolute top-11 right-0 w-[160px] p-1.5 border z-20"
             style={{
               background: 'linear-gradient(160deg, var(--bios-card-a), var(--bios-card-b))',
               borderColor: 'var(--bios-border)',
-              boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
+              boxShadow: '0 20px 50px rgba(20,24,38,0.15)',
             }}
           >
             <button
               onClick={handleLogout}
-              className="w-full text-left text-[11.5px] px-2.5 py-2 rounded-lg hover:bg-white/5"
+              className="w-full text-left text-[11.5px] px-2.5 py-2 hover:bg-black/5"
               style={{ color: 'var(--bios-text-dim)' }}
             >
               Cerrar sesión

@@ -15,5 +15,3 @@
 ## Estilo de código
 - (Ej: componentes funcionales, hooks personalizados con prefijo use..., etc.)
 
-## Reglas de IndexedDB
-- (Ej: cada módulo define su propio store, nomenclatura de las bases, migraciones, etc.)

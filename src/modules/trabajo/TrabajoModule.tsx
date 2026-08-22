@@ -7,7 +7,7 @@ export function TrabajoModule() {
 
   return (
     <div className="pb-20 md:pb-10">
-      <div className="max-w-[1180px] mx-auto px-5 pt-4">
+      <div className="w-full px-5 sm:px-8 pt-4">
         <h1 className="font-display font-bold text-[15px] mb-3">Trabajo</h1>
         
         <TrabajoNav active={tab} onChange={setTab} />

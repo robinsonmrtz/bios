@@ -1,7 +1,6 @@
 import { useState, type ReactNode, type DragEvent, type MouseEvent } from 'react';
 import { IconGrip } from '../../shared/icons';
 
-// --- TIPOS ---
 type SpanSize = 1 | 2;
 type WidgetType = 'finanzas' | 'tareas' | 'salud' | 'escaner' | 'rendimiento' | 'empty';
 
@@ -14,7 +13,6 @@ interface WidgetData {
   row: number;
 }
 
-// --- CONFIGURACIÓN INICIAL DE LA GRILLA ---
 const REAL_WIDGETS: WidgetData[] = [
   { id: 'w-finanzas', type: 'finanzas', colSpan: 2, rowSpan: 1, col: 1, row: 1 },
   { id: 'w-tareas', type: 'tareas', colSpan: 1, rowSpan: 2, col: 3, row: 1 },
@@ -42,7 +40,6 @@ function generateGrid(realWidgets: WidgetData[], minRows = 5, cols = 4): WidgetD
 
 const INITIAL_WIDGETS = generateGrid(REAL_WIDGETS);
 
-// --- ISLA (contenedor con el punto de agarre, SOLO escritorio) ---
 function Island({
   children,
   colSpan = 1,
@@ -79,12 +76,12 @@ function Island({
       onDragEnd={onDragEnd}
       onDragOver={onDragOver}
       onDrop={onDrop}
-      className={`relative rounded-[14px] p-1.5 h-full w-full transition-opacity duration-200 ${
+      className={`relative p-1.5 h-full w-full transition-opacity duration-200 ${
         isDragging ? 'opacity-40 scale-[0.98]' : 'opacity-100'
       }`}
       style={{
-        border: '1px dashed rgba(255,255,255,0.12)',
-        background: 'rgba(255,255,255,0.015)',
+        border: '1px dashed rgba(20,24,38,0.15)',
+        background: 'rgba(20,24,38,0.02)',
         gridColumn: `${col} / span ${colSpan}`,
         gridRow: `${row} / span ${rowSpan}`,
       }}
@@ -92,7 +89,7 @@ function Island({
       {showHandle && (
         <div
           onMouseDown={onHandleDown}
-          className="absolute top-2.5 right-2.5 z-10 p-1 rounded-md cursor-grab active:cursor-grabbing hover:bg-white/5"
+          className="absolute top-2.5 right-2.5 z-10 p-1 cursor-grab active:cursor-grabbing hover:bg-black/5"
           style={{ color: 'var(--bios-text-faint)' }}
         >
           <IconGrip style={{ width: 14, height: 14 }} />
@@ -106,7 +103,7 @@ function Island({
 function Card({ children }: { children: ReactNode }) {
   return (
     <div
-      className="rounded-[11px] border p-3 flex flex-col h-full w-full"
+      className="border p-3 flex flex-col h-full w-full"
       style={{
         background: 'linear-gradient(160deg, var(--bios-card-a), var(--bios-card-b))',
         borderColor: 'var(--bios-border)',
@@ -127,10 +124,9 @@ function CardHeader({ dot, title }: { dot: string; title: string }) {
 }
 
 function GhostSlot() {
-  return <div className="rounded-[11px] h-full w-full" style={{ border: '1px dashed rgba(255,255,255,0.15)' }} />;
+  return <div className="h-full w-full" style={{ border: '1px dashed rgba(20,24,38,0.10)' }} />;
 }
 
-// --- RENDERIZADOR DE CONTENIDO (compartido entre escritorio y móvil) ---
 function renderWidgetContent(type: WidgetType) {
   switch (type) {
     case 'finanzas':
@@ -160,11 +156,11 @@ function renderWidgetContent(type: WidgetType) {
         <Card>
           <CardHeader dot="var(--bios-warn)" title="Tareas" />
           <div className="flex-1 flex flex-col gap-2 mt-1">
-            <div className="flex justify-between text-[11px] p-2 rounded-md bg-white/5" style={{ color: 'var(--bios-text-dim)' }}>
+            <div className="flex justify-between text-[11px] p-2 bg-black/5" style={{ color: 'var(--bios-text-dim)' }}>
               <span>Subir a Prod</span>
               <b style={{ color: 'var(--bios-danger)' }}>12:00</b>
             </div>
-            <div className="flex justify-between text-[11px] p-2 rounded-md bg-white/5" style={{ color: 'var(--bios-text-dim)' }}>
+            <div className="flex justify-between text-[11px] p-2 bg-black/5" style={{ color: 'var(--bios-text-dim)' }}>
               <span>Revisión</span>
               <b style={{ color: 'var(--bios-text)' }}>15:30</b>
             </div>
@@ -212,8 +208,8 @@ function renderWidgetContent(type: WidgetType) {
         <Card>
           <CardHeader dot="var(--bios-accent)" title="Rendimiento del sistema" />
           <div
-            className="flex-1 flex items-center justify-center border border-dashed rounded-[8px] mt-2 bg-white/5"
-            style={{ borderColor: 'rgba(255,255,255,0.05)', color: 'var(--bios-text-dim)' }}
+            className="flex-1 flex items-center justify-center border border-dashed mt-2 bg-black/5"
+            style={{ borderColor: 'rgba(20,24,38,0.08)', color: 'var(--bios-text-dim)' }}
           >
             <span className="text-[12px]">[ Gráfico 2×2 ]</span>
           </div>
@@ -225,7 +221,6 @@ function renderWidgetContent(type: WidgetType) {
   }
 }
 
-// --- COMPONENTE PRINCIPAL ---
 export function IslandsGrid() {
   const [widgets, setWidgets] = useState<WidgetData[]>(INITIAL_WIDGETS);
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -317,15 +312,12 @@ export function IslandsGrid() {
     setDraggedId(null);
   };
 
-  // Solo los widgets reales (sin los huecos fantasma), en el orden en que
-  // quedaron dispuestos en escritorio: fila arriba->abajo, columna izq->der.
   const widgetsParaMovil = widgets
     .filter((w) => w.type !== 'empty')
     .sort((a, b) => a.row - b.row || a.col - b.col);
 
   return (
     <>
-      {/* ============ ESCRITORIO / TABLET: grid arrastrable ============ */}
       <div className="hidden md:grid grid-cols-4 gap-3 auto-rows-[130px] items-stretch min-w-[700px] overflow-x-auto">
         {widgets.map((widget) => (
           <Island
@@ -348,9 +340,6 @@ export function IslandsGrid() {
         ))}
       </div>
 
-      {/* ============ MÓVIL: lista apilada de solo lectura ============ */}
-      {/* Mismo estado `widgets`, sin drag, sin huecos fantasma, orden
-          heredado de la posición que tenían en escritorio (fila, columna). */}
       <div className="flex md:hidden flex-col gap-3">
         {widgetsParaMovil.map((widget) => (
           <div key={widget.id} className="min-h-[130px]">

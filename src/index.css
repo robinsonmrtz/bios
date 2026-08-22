@@ -1,23 +1,27 @@
 @import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* ============ Tokens de diseño de Bios (Paso 1 aprobado) ============ */
+/* ============ Tokens de diseño de Bios — REDISEÑO CLARO ============ */
 :root {
-  --bios-bg: #162036;
-  --bios-card-a: #1c2b4d;
-  --bios-card-b: #131d34;
-  --bios-border: rgba(255, 255, 255, 0.08);
-  --bios-border-hover: rgba(120, 180, 255, 0.35);
-  --bios-text: #f4f7fc;
-  --bios-text-dim: #9fb0cc;
-  --bios-text-faint: #6b7999;
-  --bios-accent: #5ec9ff;
-  --bios-accent-2: #7c8cff;
-  --bios-accent-glow: rgba(94, 201, 255, 0.35);
-  --bios-ok: #5ed9a3;
-  --bios-warn: #ffb35e;
-  --bios-danger: #ff6b6b;
-  --bios-radius: 14px;
+  --bios-bg: #ffffff;
+  --bios-card-a: #ffffff;
+  --bios-card-b: #f2f4f8;
+  --bios-border: rgba(20, 24, 38, 0.10);
+  --bios-border-hover: rgba(33, 35, 47, 0.35);
+  --bios-text: #14161f;
+  --bios-text-dim: #565c6e;
+  --bios-text-faint: #8990a3;
+  --bios-accent: #1f8fd1;
+  --bios-accent-2: #5b63e6;
+  --bios-accent-glow: rgba(31, 143, 209, 0.25);
+  --bios-ok: #1f9d63;
+  --bios-warn: #c9760c;
+  --bios-danger: #d63447;
+
+  /* Menú (Sidebar/MobileDrawer) — metalizado sobre esta base */
+  --bios-sidebar-base: #21232f;
+
+  --bios-radius: 0px;
 }
 
 html, body, #root {
@@ -38,4 +42,22 @@ body {
 
 .font-mono {
   font-family: 'JetBrains Mono', monospace;
+}
+
+/* ============ Puntas afiladas en TODA la app ============ */
+/* Anula cualquier rounded-* de Tailwind (tarjetas, botones, inputs,
+   modales, hovers, lo que sea) de un solo lugar. No depende de estado,
+   así que cubre también los estados hover/focus/active automáticamente. */
+*, *::before, *::after {
+  border-radius: 0 !important;
+}
+
+/* ============ Menú metalizado (Sidebar / MobileDrawer) ============ */
+.bios-menu-metal {
+  background: linear-gradient(
+    160deg,
+    #35384a 0%,
+    var(--bios-sidebar-base) 42%,
+    #1a1c26 100%
+  );
 }

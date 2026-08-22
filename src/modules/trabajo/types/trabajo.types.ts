@@ -83,5 +83,5 @@ export interface StatClienteSummary extends Cliente {
   inactivo: boolean;
 }
 
-export type ColumnaOrdenVideo = 'numero' | 'nombre' | 'entrega' | 'guion' | 'tiempo' | 'subido';
+export type ColumnaOrdenVideo = 'numero' | 'nombre' | 'entrega' | 'guion' | 'tiempo' | 'subido' | 'estado';
 export type DireccionOrden = 'asc' | 'desc';

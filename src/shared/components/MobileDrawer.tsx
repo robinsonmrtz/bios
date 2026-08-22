@@ -18,13 +18,12 @@ export function MobileDrawer({ open, activeId, onSelect, onClose }: Props) {
         }`}
       />
       <div
-        className="fixed top-0 left-0 bottom-0 z-40 flex flex-col md:hidden transition-transform duration-200"
+        className="fixed top-0 left-0 bottom-0 z-40 flex flex-col md:hidden transition-transform duration-200 bios-menu-metal"
         style={{
           width: 190,
           padding: '16px 12px',
           transform: open ? 'translateX(0)' : 'translateX(-100%)',
-          background: 'linear-gradient(160deg, var(--bios-card-a), var(--bios-card-b))',
-          borderRight: '1px solid var(--bios-border)',
+          borderRight: '1px solid rgba(255,255,255,0.06)',
         }}
       >
         <div
@@ -47,13 +46,13 @@ export function MobileDrawer({ open, activeId, onSelect, onClose }: Props) {
                 onSelect(item.id);
                 onClose();
               }}
-              className="w-full flex items-center gap-3 rounded-[11px] mb-2 border text-[14px]"
+              className="w-full flex items-center gap-3 mb-2 border text-[14px]"
               style={{
                 height: 40,
                 padding: '0 9px',
-                background: active ? 'linear-gradient(160deg, var(--bios-card-a), var(--bios-card-b))' : 'transparent',
-                borderColor: active ? 'var(--bios-border-hover)' : 'transparent',
-                color: active ? 'var(--bios-text)' : 'var(--bios-text-dim)',
+                background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
+                borderColor: active ? 'rgba(255,255,255,0.15)' : 'transparent',
+                color: active ? '#f4f7fc' : 'rgba(244,247,252,0.55)',
               }}
             >
               <item.icon style={{ width: 19, height: 19, flexShrink: 0 }} />
@@ -63,8 +62,8 @@ export function MobileDrawer({ open, activeId, onSelect, onClose }: Props) {
         })}
 
         <button
-          className="mt-auto w-full flex items-center gap-3 rounded-[9px] border border-dashed text-[13px]"
-          style={{ height: 34, padding: '0 9px', borderColor: 'var(--bios-border-hover)', color: 'var(--bios-text-faint)' }}
+          className="mt-auto w-full flex items-center gap-3 border border-dashed text-[13px]"
+          style={{ height: 34, padding: '0 9px', borderColor: 'rgba(255,255,255,0.15)', color: 'rgba(244,247,252,0.4)' }}
         >
           <IconPlus style={{ width: 16, height: 16, flexShrink: 0 }} />
           <span>Nuevo módulo</span>

@@ -9,7 +9,7 @@ import {
   type Categoria,
   type Cuenta,
 } from '../../core/db/db';
-import { IconSwap, IconPlus, IconTrash, IconFilter, IconPencil } from '../../shared/icons';
+import { IconSwap, IconBuildingStore, IconPlus, IconTrash, IconFilter, IconPencil } from '../../shared/icons';
 import { TransaccionModal } from './TransaccionModal';
 
 interface Props {
@@ -19,7 +19,7 @@ interface Props {
 type FiltroTipo = 'todos' | 'ingreso' | 'gasto' | 'transferencia';
 
 const formatearDinero = (monto: number) =>
-  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 2 }).format(monto);
+  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(monto);
 
 function formatearFecha(fecha: string) {
   const d = new Date(fecha + 'T00:00:00');

@@ -11,242 +11,115 @@ interface Props {
   onSaved: () => void;
 }
 
-type TipoMovimiento = 'gasto' | 'ingreso' | 'transferencia';
-
-function hoyISO() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dia = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dia}`;
-}
-
 export function TransaccionModal({ open, cuentas, categorias, transaccionExistente, onClose, onSaved }: Props) {
-  const [tipo, setTipo] = useState<TipoMovimiento>('gasto');
+  const [tipo, setTipo] = useState<'gasto' | 'ingreso' | 'transferencia'>('gasto');
   const [monto, setMonto] = useState('');
   const [descripcion, setDescripcion] = useState('');
-  const [fecha, setFecha] = useState(hoyISO());
+  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [cuentaId, setCuentaId] = useState('');
-  const [cuentaDestinoId, setCuentaDestinoId] = useState('');
   const [categoriaId, setCategoriaId] = useState('');
-  const [comercio, setComercio] = useState('');
   const [pagado, setPagado] = useState(true);
   const [guardando, setGuardando] = useState(false);
 
-  // Al abrir: si viene una transacción existente, precarga sus datos
-  // (modo edición). Si no, resetea todo a los valores por defecto (modo creación).
   useEffect(() => {
     if (!open) return;
-
     if (transaccionExistente) {
       setTipo(transaccionExistente.tipo);
       setMonto(String(transaccionExistente.monto));
       setDescripcion(transaccionExistente.descripcion);
       setFecha(transaccionExistente.fecha);
       setCuentaId(transaccionExistente.cuenta_id);
-      setCuentaDestinoId(transaccionExistente.cuenta_destino_id || cuentas[1]?.id || '');
       setCategoriaId(transaccionExistente.categoria_id || '');
-      setComercio(transaccionExistente.comercio || '');
       setPagado(transaccionExistente.pagado);
     } else {
-      setTipo('gasto');
-      setMonto('');
-      setDescripcion('');
-      setFecha(hoyISO());
-      setCuentaId(cuentas[0]?.id || '');
-      setCuentaDestinoId(cuentas[1]?.id || '');
-      setCategoriaId('');
-      setComercio('');
-      setPagado(true);
+      setTipo('gasto'); setMonto(''); setDescripcion(''); setFecha(new Date().toISOString().split('T')[0]);
+      setCuentaId(cuentas[0]?.id || ''); setCategoriaId(''); setPagado(true);
     }
-  }, [open, cuentas, transaccionExistente]);
-
-  const categoriasDelTipo = categorias.filter((c) => c.tipo === (tipo === 'ingreso' ? 'ingreso' : 'gasto'));
-  const editando = !!transaccionExistente?.id;
+  }, [open, transaccionExistente, cuentas]);
 
   async function handleGuardar() {
-    const montoNum = parseFloat(monto);
-    if (!montoNum || montoNum <= 0) return alert('Ingresa un monto válido.');
-    if (!descripcion.trim()) return alert('La descripción es obligatoria.');
-    if (!fecha) return alert('Selecciona una fecha.');
-    if (!cuentaId) return alert('Selecciona una cuenta.');
-    if (tipo === 'transferencia' && (!cuentaDestinoId || cuentaDestinoId === cuentaId)) {
-      return alert('Selecciona una cuenta de destino distinta a la de origen.');
-    }
-    if (tipo !== 'transferencia' && !categoriaId) return alert('Selecciona una categoría.');
-
-    const payload = {
-      tipo,
-      monto: montoNum,
-      descripcion: descripcion.trim(),
-      fecha,
-      cuenta_id: cuentaId,
-      cuenta_destino_id: tipo === 'transferencia' ? cuentaDestinoId : null,
-      categoria_id: tipo === 'transferencia' ? null : categoriaId,
-      comercio: comercio.trim() || null,
-      pagado: tipo === 'transferencia' ? true : pagado,
-    };
-
+    if (!monto || parseFloat(monto) <= 0) return alert('Ingresa un monto.');
     setGuardando(true);
     try {
-      if (editando) {
-        await actualizarTransaccion(transaccionExistente!.id!, payload);
-      } else {
-        await crearTransaccion({ ...payload, gasto_fijo: false, observacion: null, archivada: false });
-      }
-      onSaved();
-      onClose();
-    } catch (err) {
-      console.error('Error guardando transacción:', err);
-      alert('No se pudo guardar el movimiento. Revisa la consola.');
-    } finally {
-      setGuardando(false);
-    }
+      const payload = { tipo, monto: parseFloat(monto), descripcion, fecha, cuenta_id: cuentaId, categoria_id: categoriaId || null, pagado };
+      if (transaccionExistente) await actualizarTransaccion(transaccionExistente.id!, payload);
+      else await crearTransaccion({ ...payload, cuenta_destino_id: null, comercio: null, gasto_fijo: false, observacion: null, archivada: false });
+      onSaved(); onClose();
+    } catch (e) { alert('Error guardando'); } finally { setGuardando(false); }
   }
 
-  const colorTipo = tipo === 'ingreso' ? 'var(--bios-ok)' : tipo === 'gasto' ? 'var(--bios-danger)' : '#2773d6';
+  const footer = (
+    <>
+      <button onClick={onClose} className="px-4 py-2.5 rounded-[10px] text-[13px] font-semibold text-gray-600 border border-gray-200 hover:bg-gray-50">Cancelar</button>
+      <button onClick={handleGuardar} disabled={guardando} className="px-5 py-2.5 rounded-[10px] text-[13px] font-semibold text-white bg-[#2773d6] hover:bg-blue-700 disabled:opacity-50">
+        {guardando ? 'Guardando...' : 'Confirmar movimiento'}
+      </button>
+    </>
+  );
+
+  const Title = <span>Registrar <span className={tipo === 'gasto' ? 'text-red-500' : 'text-green-500'}>{tipo}</span></span>;
+  const inputClass = "w-full bg-gray-50 border border-gray-200 rounded-[10px] px-3 py-2.5 text-[13px] text-gray-800 outline-none focus:border-blue-500 focus:bg-white transition-colors";
+  const labelClass = "block text-[10px] font-bold text-gray-500 uppercase tracking-wide mb-1.5";
 
   return (
-    <Modal open={open} title={editando ? 'Editar movimiento' : 'Registrar movimiento'} onCancel={onClose} hideDefaultFooter>
-      <div className="flex flex-col gap-4 mt-2">
-        <div className="flex gap-2">
-          {(['gasto', 'ingreso', 'transferencia'] as TipoMovimiento[]).map((op) => (
-            <button
-              key={op}
-              onClick={() => setTipo(op)}
-              className="flex-1 py-2 rounded-lg text-[12px] font-semibold border capitalize"
-              style={{
-                borderColor: tipo === op ? colorTipo : 'var(--bios-border)',
-                background: tipo === op ? `${colorTipo}22` : 'transparent',
-                color: tipo === op ? colorTipo : 'var(--bios-text-dim)',
-              }}
-            >
-              {op}
+    <Modal open={open} title={Title} onClose={onClose} maxWidth="md" footer={footer}>
+      <div className="flex flex-col gap-5 mt-2">
+        
+        {/* Selector de tipo sutil */}
+        <div className="flex gap-2 bg-gray-100 p-1 rounded-xl">
+          {(['gasto', 'ingreso'] as const).map(t => (
+            <button key={t} onClick={() => setTipo(t)} className={`flex-1 py-1.5 text-[12px] font-semibold rounded-lg capitalize transition-colors ${tipo === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+              {t}
             </button>
           ))}
         </div>
 
-        <div className="flex items-center justify-center gap-1 py-2">
-          <span className="text-[16px] sm:text-[22px] font-display font-bold flex-shrink-0" style={{ color: colorTipo }}>$</span>
-          <input
-            type="number"
-            value={monto}
-            onChange={(e) => setMonto(e.target.value)}
-            placeholder="0.00"
-            className="bg-transparent text-[22px] sm:text-[32px] font-display font-bold outline-none text-left min-w-0"
-            style={{ color: 'var(--bios-text)', width: `${Math.max((monto || '0.00').length + 1, 5)}ch` }}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>Descripción</label>
-          <input
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            placeholder="Ej: Compra de insumos, Pago mensual..."
-            className="w-full bg-black/20 border rounded-[10px] px-3 py-2 text-[13px] outline-none"
-            style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text)' }}
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>Fecha</label>
-          <input
-            type="date"
-            value={fecha}
-            onChange={(e) => setFecha(e.target.value)}
-            className="w-full bg-black/20 border rounded-[10px] px-3 py-2 text-[13px] outline-none"
-            style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text)' }}
-          />
+        <div className="flex items-center gap-1">
+          <span className={`text-[28px] font-bold ${tipo === 'gasto' ? 'text-red-500' : 'text-green-500'}`}>$</span>
+          <input type="number" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="0.00" className="w-full text-[32px] font-bold text-gray-900 outline-none placeholder-gray-300 bg-transparent" />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>
-              {tipo === 'transferencia' ? 'Cuenta origen' : 'Cuenta'}
-            </label>
-            <select
-              value={cuentaId}
-              onChange={(e) => setCuentaId(e.target.value)}
-              className="w-full bg-black/20 border rounded-[10px] px-3 py-2 text-[13px] outline-none"
-              style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text)' }}
-            >
-              {cuentas.map((c) => (
-                <option key={c.id} value={c.id}>{c.nombre}</option>
-              ))}
-            </select>
-          </div>
-
-          {tipo === 'transferencia' && (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>Cuenta destino</label>
-              <select
-                value={cuentaDestinoId}
-                onChange={(e) => setCuentaDestinoId(e.target.value)}
-                className="w-full bg-black/20 border rounded-[10px] px-3 py-2 text-[13px] outline-none"
-                style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text)' }}
-              >
-                {cuentas.map((c) => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
+          <div className="bg-gray-50 border border-gray-200 rounded-[10px] p-3 flex justify-between items-center cursor-pointer" onClick={() => setPagado(!pagado)}>
+            <div>
+              <div className="text-[12px] font-bold text-gray-800">Estado del pago</div>
+              <div className="text-[10px] text-gray-500">Marcado como pagado</div>
             </div>
-          )}
+            <input type="checkbox" checked={pagado} readOnly className="w-4 h-4 accent-blue-600" />
+          </div>
+          <div className="bg-gray-50 border border-gray-200 rounded-[10px] p-3 flex justify-between items-center opacity-60">
+            <div>
+              <div className="text-[12px] font-bold text-gray-800">Gasto fijo</div>
+              <div className="text-[10px] text-gray-500">Se repite mensual</div>
+            </div>
+            <input type="checkbox" disabled className="w-4 h-4" />
+          </div>
         </div>
 
-        {tipo !== 'transferencia' && (
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>Categoría</label>
-            <select
-              value={categoriaId}
-              onChange={(e) => setCategoriaId(e.target.value)}
-              className="w-full bg-black/20 border rounded-[10px] px-3 py-2 text-[13px] outline-none"
-              style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text)' }}
-            >
-              <option value="">Selecciona una categoría...</option>
-              {categoriasDelTipo.map((c) => (
-                <option key={c.id} value={c.id}>{c.emoji} {c.nombre}</option>
-              ))}
+        <div>
+          <label className={labelClass}>Fecha de transacción</label>
+          <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputClass} />
+        </div>
+
+        <div>
+          <label className={labelClass}>Descripción / Concepto básico</label>
+          <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Ej: Compra de insumos..." className={inputClass} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={labelClass}>Cuenta origen</label>
+            <select value={cuentaId} onChange={(e) => setCuentaId(e.target.value)} className={inputClass}>
+              {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
             </select>
           </div>
-        )}
-
-        {tipo !== 'transferencia' && (
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[11px]" style={{ color: 'var(--bios-text-dim)' }}>Comercio (opcional)</label>
-            <input
-              value={comercio}
-              onChange={(e) => setComercio(e.target.value)}
-              placeholder="Ej: Éxito, Amazon..."
-              className="w-full bg-black/20 border rounded-[10px] px-3 py-2 text-[13px] outline-none"
-              style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text)' }}
-            />
+          <div>
+            <label className={labelClass}>Categoría</label>
+            <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={inputClass}>
+              <option value="">Selecciona...</option>
+              {categorias.filter(c => c.tipo === tipo).map(c => <option key={c.id} value={c.id}>{c.emoji} {c.nombre}</option>)}
+            </select>
           </div>
-        )}
-
-        {tipo !== 'transferencia' && (
-          <label className="flex items-center justify-between">
-            <span className="text-[12.5px]">Marcado como pagado</span>
-            <input type="checkbox" checked={pagado} onChange={(e) => setPagado(e.target.checked)} />
-          </label>
-        )}
-
-        <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor: 'var(--bios-border)' }}>
-          <button
-            onClick={onClose}
-            className="text-[11px] px-3 py-2 rounded-lg border"
-            style={{ borderColor: 'var(--bios-border)', color: 'var(--bios-text-dim)' }}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleGuardar}
-            disabled={guardando}
-            className="text-[12px] font-semibold px-4 py-2 rounded-lg disabled:opacity-50"
-            style={{ background: 'var(--bios-accent)', color: '#0a1120' }}
-          >
-            {guardando ? 'Guardando...' : editando ? 'Guardar cambios' : 'Confirmar movimiento'}
-          </button>
         </div>
       </div>
     </Modal>

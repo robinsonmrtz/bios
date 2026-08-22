@@ -45,6 +45,11 @@ const CONFIG = {
     "vite.config.ts",
   ],
 
+  // Archivos de entrada que viven sueltos dentro de src/ (no son un módulo,
+  // ni shared/core, así que nunca los detecta el descubrimiento automático).
+  // Siempre se incluyen en un escaneo completo si existen.
+  srcEntryFiles: ["src/App.tsx", "src/main.tsx"],
+
   // Extensiones de archivo que se incluyen en el escaneo
   includeExtensions: [".ts", ".tsx", ".js", ".jsx", ".css"],
 
@@ -252,7 +257,7 @@ function main() {
 
   // Archivos de configuración de raíz (solo en escaneo completo, dan contexto global)
   const rootFiles = !requestedModule
-    ? CONFIG.rootConfigFiles.filter(exists)
+    ? [...CONFIG.rootConfigFiles, ...CONFIG.srcEntryFiles].filter(exists)
     : [];
 
   filesToScan = [...new Set(filesToScan)]; // dedupe

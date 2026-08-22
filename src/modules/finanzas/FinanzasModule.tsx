@@ -19,7 +19,7 @@ export function FinanzasModule() {
 
   return (
     <div className="pb-10">
-      <div className="max-w-[1180px] mx-auto px-5 pt-4">
+      <div className="w-full px-5 sm:px-8 pt-4">
         <h1 className="font-display font-bold text-[15px] mb-3">Finanzas</h1>
         <FinanzasNav active={tab} onChange={setTab} />
 
